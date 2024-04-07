@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.stream.Stream;
 
 import javafx.application.Application;
 import javafx.geometry.Pos;
@@ -23,6 +24,9 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
+import javafx.scene.paint.Color;
 
 public class DoctorPage extends BorderPane {
     private Label patientNameLabel = new Label("Patient <Unknown>");
@@ -95,6 +99,14 @@ public class DoctorPage extends BorderPane {
         //loadChatHistory("12345");
         chatBox.getChildren().addAll(chatTextArea, chatInputBox);
         loadChatHistory("12345");
+        sendButton.setOnAction(e -> {
+            String message = chatInputField.getText();
+            if (!message.isEmpty()) {
+                sendMessage("12345", "Doctor", message); // Replace "Doctor" with the actual doctor's name
+                chatInputField.clear(); // Clear the text field after sending the message
+                loadChatHistory("12345"); // Load the chat history again to display the new message
+            }
+        });
 
         // Adding components to the right panel
         rightPanel.getChildren().addAll(editPrescriptionBox, vaccinationsBox, chatBox);
@@ -175,14 +187,15 @@ public class DoctorPage extends BorderPane {
     }
     
     private void loadChatHistory(String patientID) {
-        chatTextArea.clear(); // Clear previous messages
+    	chatTextArea.clear(); // Clear previous messages
         Path chatFilePath = Paths.get(patientID + "Chat.txt");
         if (Files.exists(chatFilePath)) {
             try {
-                // Read all lines from the chat file
-                Files.readAllLines(chatFilePath).forEach(line -> chatTextArea.appendText(line + "\n"));
+                // Read all lines from the chat file and append to the chat display area
+                Files.lines(chatFilePath).forEach(line -> chatTextArea.appendText(line + "\n"));
             } catch (IOException e) {
                 e.printStackTrace(); // Handle exceptions here
+                // Maybe show an alert to the user or log the error
             }
         }
     }
@@ -191,20 +204,20 @@ public class DoctorPage extends BorderPane {
         String filename = patientID + "Chat.txt";
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename, true))) {
             String timestamp = DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(LocalDateTime.now());
-            writer.write(timestamp + " | " + sender + " | " + message);
+            writer.write(timestamp + "\n" + sender + ":\n" + message + "\n\n");
             writer.newLine();
         } catch (IOException e) {
             e.printStackTrace(); // Handle exceptions here
         }
     }
     
-    private void sendMessage(String patientID, String message) {
+    private void sendMessage(String patientID, String sender, String message) {
         if (message == null || message.trim().isEmpty()) {
             // Handle empty message case (e.g., show an alert or error)
             return;
         }
         // Assuming 'Doctor' is the sender. Replace with actual doctor's identification.
-        appendMessageToFile(patientID, "Doctor", message);
+        appendMessageToFile(patientID, sender, message);
         // Reload chat history to display the new message
         loadChatHistory(patientID);
         // Clear the input field after sending the message
