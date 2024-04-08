@@ -60,12 +60,19 @@ public class LoginPage extends VBox {
                 RadioButton selectedRadio = (RadioButton) group.getSelectedToggle();
                 String role = selectedRadio.getText();
                 if (validateLogin(username, password, role)) {
+                	String[] nameComponents = getFirstLastName(username);
+                	String firstName = null;
+                	String lastName = null;
+                	String email = null;
+                	firstName = nameComponents[0];
+                	lastName = nameComponents[1];
+                	email = nameComponents[2];
                     switch (role) {
                         case "patient":
                             showPatientPage();
                             break;
                         case "doctor":
-                            showDoctorPage();
+                            showDoctorPage(firstName, lastName, email);
                             break;
                         case "nurse":
                             showNursePage();
@@ -82,27 +89,67 @@ public class LoginPage extends VBox {
 
         getChildren().addAll(label, login, usernameField, passwordField, radioBox, loginButton, forgotPasswordLink, error);
     }
+    private String[] getFirstLastName(String username) {
+        String[] names = new String[3];
+        String userDetailsFilePath = username + "/userDetails.txt";
 
+        try {
+            File file = new File(userDetailsFilePath);
+            if (file.exists()) {
+                BufferedReader reader = new BufferedReader(new FileReader(file));
+                String username1 = reader.readLine();
+                username1 = (username1.split(":")[1].trim());
+                String password1 = reader.readLine();
+                password1 = (password1.split(":")[1].trim());
+                String role1 = reader.readLine();
+                role1 = (role1.split(":")[1].trim());
+                String first1 = reader.readLine();
+                first1 = (first1.split(":")[1].trim());
+                String last1 = reader.readLine();
+                last1 = (last1.split(":")[1].trim());
+                String email1 = reader.readLine();
+                email1 = (email1.split(":")[1].trim());
+                reader.close();
+
+                names[0] = first1;
+                names[1] = last1;
+                names[2] = email1;
+            } else {
+                System.out.println("File does not exist");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return names;
+    }
     private boolean validateLogin(String username, String password, String role) {
         String userDetailsFilePath = username + "/userDetails.txt";
         try {
             File file = new File(userDetailsFilePath);
             if (file.exists()) {
                 BufferedReader reader = new BufferedReader(new FileReader(file));
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.startsWith("Password:")) {
-                        String storedPassword = line.substring("Password:".length()).trim();
-                        if (password.equals(storedPassword)) {
-                            // Check if role matches
-                            if (line.contains("Role: " + role)) {
-                                reader.close();
-                                return true;
-                            }
-                        }
-                    }
-                }
+                String username1 = reader.readLine();
+                username1 = (username1.split(":")[1].trim());
+
+                String password1 = reader.readLine();
+                password1 = (password1.split(":")[1].trim());
+
+                String role1 = reader.readLine();
+                role1 = (role1.split(":")[1].trim());
+
                 reader.close();
+
+                // Check if provided credentials match the stored ones
+                if (username1.equals(username) && password1.equals(password) && role1.equals(role)) {
+                    System.out.println("Credentials match");
+                    return true;
+                } else {
+                    System.out.println("Credentials do not match");
+                    return false;
+                }
+            } else {
+                System.out.println("File does not exist");
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -110,9 +157,10 @@ public class LoginPage extends VBox {
         return false;
     }
 
-    private void showDoctorPage() {
-        DoctorPage doctorPage = new DoctorPage(primaryStage);
-        Scene doctorScene = new Scene(doctorPage, 600, 800);
+
+    private void showDoctorPage(String firstName, String lastName, String email) {
+        DoctorPage doctorPage = new DoctorPage(primaryStage, firstName, lastName, email);
+        Scene doctorScene = new Scene(doctorPage, 1600, 1200);
         primaryStage.setScene(doctorScene);
     }
 

@@ -1,11 +1,17 @@
 package application;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.FileWriter;
+import java.io.IOException;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -19,6 +25,7 @@ public class RegisterPage extends VBox {
     private PasswordField confirmpasswordField;
     private ToggleGroup group;
     private Stage primaryStage;
+    private TextField birthdayField;
 
     public RegisterPage(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -37,10 +44,10 @@ public class RegisterPage extends VBox {
         lastNameField.setMaxWidth(200);
         lastNameField.setPromptText("Last Name");
 
-        usernameField = new TextField();
-        usernameField.setPrefWidth(200);
-        usernameField.setMaxWidth(200);
-        usernameField.setPromptText("Username");
+        birthdayField = new TextField();
+        birthdayField.setPrefWidth(200);
+        birthdayField.setMaxWidth(200);
+        birthdayField.setPromptText("Birthday MMDDYE");
 
         emailField = new TextField();
         emailField.setPrefWidth(200);
@@ -75,16 +82,16 @@ public class RegisterPage extends VBox {
         Label error = new Label("");
         confirmButton.setOnAction(event -> createFolderByUsername());
 
-        getChildren().addAll(label, register, firstNameField, lastNameField, usernameField, emailField, passwordField, confirmpasswordField, radioBox, confirmButton, error);
+        getChildren().addAll(label, register, firstNameField, lastNameField, birthdayField, emailField, passwordField, confirmpasswordField, radioBox, confirmButton, error);
     }
 
     private void createFolderByUsername() {
-  
-        String username = usernameField.getText();
+        String birthday = birthdayField.getText();
         String firstName = firstNameField.getText();
         String lastName = lastNameField.getText();
         String email = emailField.getText();
         String password = passwordField.getText();
+        String username = firstName + lastName + birthday;
         String confirmPassword = confirmpasswordField.getText();
         ToggleButton selectedRole = (ToggleButton) group.getSelectedToggle();
         String role = selectedRole != null ? selectedRole.getText() : ""; 
@@ -115,13 +122,39 @@ public class RegisterPage extends VBox {
                     try {
                         if (userDetailsFile.createNewFile()) {
                             System.out.println("userDetails.txt file created: " + userDetailsFile.getAbsolutePath());
-                            String userDetailsText = "Username: " + username + "\nFirst Name: " + firstName + "\nLast Name: " + lastName + "\nEmail: " + email + "\nPassword: " + password + "\nRole: " + role;
+                            String userDetailsText = "Username: " + username  + "\nPassword: " + password + "\nRole: " + role + "\nFirst Name: " + firstName + "\nLast Name: " + lastName + "\nEmail: " + email + "\nBirthday: " + birthday;
                             Utils.writeToFile(userDetailsFile, userDetailsText);
                         } else {
                             System.out.println("userDetails.txt file already exists: " + userDetailsFile.getAbsolutePath());
                         }
                     } catch (IOException e) {
                         System.out.println("Failed to create userDetails.txt file: " + e.getMessage());
+                    }
+
+                    // Create prescription.txt file
+                    File prescriptionFile = new File(folder, "prescription.txt");
+                    try {
+                        if (prescriptionFile.createNewFile()) {
+                            System.out.println("prescription.txt file created: " + prescriptionFile.getAbsolutePath());
+                            // Add initial content or leave it empty
+                        } else {
+                            System.out.println("prescription.txt file already exists: " + prescriptionFile.getAbsolutePath());
+                        }
+                    } catch (IOException e) {
+                        System.out.println("Failed to create prescription.txt file: " + e.getMessage());
+                    }
+
+                    // Create vaccination.txt file
+                    File vaccinationFile = new File(folder, "vaccinations.txt");
+                    try {
+                        if (vaccinationFile.createNewFile()) {
+                            System.out.println("vaccination.txt file created: " + vaccinationFile.getAbsolutePath());
+                            // Add initial content or leave it empty
+                        } else {
+                            System.out.println("vaccination.txt file already exists: " + vaccinationFile.getAbsolutePath());
+                        }
+                    } catch (IOException e) {
+                        System.out.println("Failed to create vaccination.txt file: " + e.getMessage());
                     }
 
                     LoginPage loginPage = new LoginPage(primaryStage);
