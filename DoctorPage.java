@@ -1,11 +1,13 @@
 package application;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+
+
+import javafx.application.Application;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -24,40 +26,36 @@ public class DoctorPage extends BorderPane {
     private Label doctorNameLabel = new Label("");
     private Label doctorEmailLabel = new Label("");
     private Button logoutButton;
-    private String[][] allData;
-  
 
     public DoctorPage(Stage primaryStage, String firstName, String lastName, String email) {
         // Main layout is BorderPane (it has 5 areas: top, right, bottom, left, center)
-        super();
-        logoutButton = new Button("Logout");
-        logoutButton.setOnAction(e -> logout(primaryStage));
+    	 super();
+         logoutButton = new Button("Logout");
+         logoutButton.setOnAction(e -> logout(primaryStage));
 
-        patientNameLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: #2e8b57;"); // Optional styling
-        this.setTop(patientNameLabel);
+         patientNameLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: #2e8b57;"); // Optional styling
+         this.setTop(patientNameLabel);
 
-        // Add the search box to the top
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search Patient");
+         // Add the search box to the top
+         TextField searchField = new TextField();
+         searchField.setPromptText("Search Patient");
 
-        Button searchButton = new Button("Search");
-        searchButton.setOnAction(e -> {
-            String username = searchField.getText(); // Capture the value of the search text field
-            allData = getAllData(username);
-            VBox leftPanel = setupLeftPanel(firstName, lastName, email, allData);
-            this.setLeft(leftPanel); // Update the left panel
-            this.setRight(createRightPanel(allData, username)); // Pass the username to createRightPanel
-        });
+         Button searchButton = new Button("Search");
+         searchButton.setOnAction(e -> {
+             String username = searchField.getText();
+             String[][] allData = getAllData(username);
+             // Call setupLeftPanel with allData
+             VBox leftPanel = setupLeftPanel(firstName, lastName, email, allData);
+             this.setLeft(leftPanel); // Set left panel after retrieving allData
+         });
 
-        HBox searchBox = new HBox(5); // 5 is the spacing between the text field and button
-        searchBox.getChildren().addAll(searchField, searchButton);
+         HBox searchBox = new HBox(5); // 5 is the spacing between the text field and button
+         searchBox.getChildren().addAll(searchField, searchButton);
 
-        this.setTop(new VBox(patientNameLabel, searchBox));
+         this.setTop(new VBox(patientNameLabel, searchBox));
 
-        // Initialize allData and set up the left panel
-        allData = getAllData("");
-        VBox leftPanel = setupLeftPanel(firstName, lastName, email, allData);
-        this.setLeft(leftPanel);
+        // left panel
+        
 
         // Text areas for the center
         TextArea visitSummaryTextArea = new TextArea();
@@ -69,15 +67,55 @@ public class DoctorPage extends BorderPane {
 
         // Center panel layout
         VBox centerPanel = new VBox(visitSummaryTextArea, healthConcernsTextArea);
-        
-        // Set the right panel
+
+        // Right panel components
+        VBox rightPanel = new VBox();
+        rightPanel.setSpacing(10);
+        rightPanel.setPrefWidth(300);
+
+        // Edit Prescription box
+        VBox editPrescriptionBox = new VBox();
+        editPrescriptionBox.setSpacing(5);
+
+        Label prescriptionLabel = new Label("Edit Prescription");
+        TextArea prescriptionTextArea = new TextArea();
+        prescriptionTextArea.setPrefHeight(200); // You can set the preferred height as needed
+
+        Button savePrescriptionButton = new Button("Save");
+        Button addPrescriptionButton = new Button("Add");
         
 
+        HBox prescriptionButtonsBox = new HBox(savePrescriptionButton, addPrescriptionButton); // 10 is the spacing between buttons
+
+        editPrescriptionBox.getChildren().addAll(prescriptionLabel, prescriptionTextArea, prescriptionButtonsBox);
+
+        // Vaccinations box
+        VBox vaccinationsBox = new VBox(new Label("Vaccinations"));
+        TextArea vaccinationsTextArea = new TextArea();
+        Button saveButton = new Button("Save");
+        Button submitButton = new Button("Submit");
+        HBox vaccinationButtonsBox = new HBox(saveButton, submitButton);
+        vaccinationsBox.getChildren().addAll(vaccinationsTextArea, vaccinationButtonsBox);
+
+        // Chat box
+        VBox chatBox = new VBox(new Label("Chat"));
+        ListView<String> chatListView = new ListView<>();
+        TextField chatInputField = new TextField();
+        Button sendButton = new Button("Send");
+        HBox chatInputBox = new HBox(chatInputField, sendButton);
+        chatBox.getChildren().addAll(chatListView, chatInputBox);
+
+        // Adding components to the right panel
+        rightPanel.getChildren().addAll(editPrescriptionBox, vaccinationsBox, chatBox);
+
         // Set the main layout areas
+       
         this.setCenter(centerPanel);
+        this.setRight(rightPanel);
     }
 
     private VBox setupLeftPanel(String firstName, String lastName, String email, String[][] allData) {
+        
         VBox leftPanel = new VBox();
         leftPanel.setPrefWidth(400);
 
@@ -154,178 +192,9 @@ public class DoctorPage extends BorderPane {
         return leftPanel;
     }
 
-    private VBox createRightPanel(String allData[][], String username) {
-    	String[] prescriptions = allData[0];
-    	String[] vaccinations = allData[1];
-
-        VBox rightPanel = new VBox();
-        rightPanel.setSpacing(10);
-        rightPanel.setPrefWidth(300);
-
-        // Edit Prescription box
-        VBox editPrescriptionBox = new VBox();
-        editPrescriptionBox.setSpacing(5);
-        Label prescriptionLabel = new Label("Edit Prescription");
-
-        // VBox to hold list of prescriptions
-        VBox listPrescription = new VBox();
-
-        if (prescriptions != null) {
-            for (int i = 0; i < prescriptions.length; i++) {
-                String prescription = prescriptions[i];
-                if (prescription != null) {
-                    HBox prescriptionWhole = new HBox();
-                    Label prescriptionTitle = new Label(prescription);
-                    Button deleteButton = new Button("Delete");
-                    prescriptionWhole.getChildren().addAll(prescriptionTitle, deleteButton);
-
-                    // Attach event handler to delete button
-                    final int indexToRemove = i; // capture the index before the lambda
-                    deleteButton.setOnAction(event -> {
-                        prescriptions[indexToRemove] = null;
-                        listPrescription.getChildren().remove(prescriptionWhole);
-                        updateUI(username); // Update UI after prescription is removed
-                    });
-
-                    listPrescription.getChildren().add(prescriptionWhole); // Add each prescription to the list
-                }
-            }
-        }
-
-        TextField prescriptionTextField = new TextField();
-        Button savePrescriptionButton = new Button("Save");
-        Button addPrescriptionButton = new Button("Add");
-
-        // Attach event handler to the "Add" button
-        addPrescriptionButton.setOnAction(event -> {
-            String newPrescription = prescriptionTextField.getText().trim();
-            if (!newPrescription.isEmpty()) {
-                // Add the new prescription to the array
-                for (int i = 0; i < prescriptions.length; i++) {
-                    if (prescriptions[i] == null) {
-                        prescriptions[i] = newPrescription;
-                        break;
-                    }
-                }
-
-                // Create a new HBox for the new prescription
-                HBox newPrescriptionWhole = new HBox();
-                Label newPrescriptionTitle = new Label(newPrescription);
-                Button newDeleteButton = new Button("Delete");
-                newPrescriptionWhole.getChildren().addAll(newPrescriptionTitle, newDeleteButton);
-
-                // Attach event handler to the new delete button
-                final int newIndexToRemove = prescriptions.length - 1; // capture the index before the lambda
-                newDeleteButton.setOnAction(event2 -> {
-                    prescriptions[newIndexToRemove] = null;
-                    listPrescription.getChildren().remove(newPrescriptionWhole);
-                    updateUI(username); // Update UI after prescription is removed
-                });
-
-                listPrescription.getChildren().add(newPrescriptionWhole); // Add the new prescription to the list
-                prescriptionTextField.clear(); // Clear the text field
-                updateUI(username); // Update the UI
-            }
-        });
-        
-        savePrescriptionButton.setOnAction(event -> {
-        	saveToPrescription(username, prescriptions);
-        });
-         
-
-        HBox prescriptionButtonsBox = new HBox(savePrescriptionButton, addPrescriptionButton);
-        editPrescriptionBox.getChildren().addAll(prescriptionLabel, listPrescription, prescriptionTextField, prescriptionButtonsBox);
-        
-        
-        VBox editVaccinationBox = new VBox();  
-        editVaccinationBox.setSpacing(5);
-        Label VaccinationLabel = new Label("Edit Vaccination");
-
-        // VBox to hold list of prescriptions
-        VBox listVaccination = new VBox();
-
-        if (vaccinations != null) {
-            for (int i = 0; i < vaccinations.length; i++) {
-                String vaccination = vaccinations[i];
-                if (vaccination != null) {
-                    HBox vaccinationWhole = new HBox();
-                    Label vaccinationTitle = new Label(vaccination);
-                    Button deleteButton = new Button("Delete");
-                    vaccinationWhole.getChildren().addAll(vaccinationTitle, deleteButton);
-
-                    // Attach event handler to delete button
-                    final int indexToRemove = i; // capture the index before the lambda
-                    deleteButton.setOnAction(event -> {
-                    	vaccinations[indexToRemove] = null;
-                        listVaccination.getChildren().remove(vaccinationWhole);
-                        updateUI(username); // Update UI after prescription is removed
-                    });
-
-                    listVaccination.getChildren().add(vaccinationWhole); // Add each prescription to the list
-                }
-            }
-        }
-
-        TextField vaccinationTextField = new TextField();
-        Button saveVaccinationButton = new Button("Save");
-        Button addVaccinationButton = new Button("Add");
-
-        // Attach event handler to the "Add" button
-        addVaccinationButton.setOnAction(event -> {
-            String newVaccination = vaccinationTextField.getText().trim();
-            if (!newVaccination.isEmpty()) {
-                // Add the new prescription to the array
-                for (int i = 0; i < vaccinations.length; i++) {
-                    if (vaccinations[i] == null) {
-                    	vaccinations[i] = newVaccination;
-                        break;
-                    }
-                }
-
-                // Create a new HBox for the new prescription
-                HBox newVaccinationWhole = new HBox();
-                Label newVaccinationTitle = new Label(newVaccination);
-                Button newDeleteButton = new Button("Delete");
-                newVaccinationWhole.getChildren().addAll(newVaccinationTitle, newDeleteButton);
-
-                // Attach event handler to the new delete button
-                final int newIndexToRemove = vaccinations.length - 1; // capture the index before the lambda
-                newDeleteButton.setOnAction(event2 -> {
-                	vaccinations[newIndexToRemove] = null;
-                    listVaccination.getChildren().remove(newVaccinationWhole);
-                    updateUI(username); // Update UI after prescription is removed
-                });
-
-                listVaccination.getChildren().add(newVaccinationWhole); // Add the new prescription to the list
-                vaccinationTextField.clear(); // Clear the text field
-                updateUI(username); // Update the UI
-            }
-        });
-        
-        saveVaccinationButton.setOnAction(event -> {
-        	saveToVaccination(username, vaccinations);
-        });
-         
-
-        HBox vaccinationButtonsBox = new HBox(saveVaccinationButton, addVaccinationButton); 
-        editVaccinationBox.getChildren().addAll(VaccinationLabel, listVaccination, vaccinationTextField, vaccinationButtonsBox);
-        
-
-        // Chat box
-        VBox chatBox = new VBox(new Label("Chat"));
-        ListView<String> chatListView = new ListView<>();
-        TextField chatInputField = new TextField();
-        Button sendButton = new Button("Send");
-        HBox chatInputBox = new HBox(chatInputField, sendButton);
-        chatBox.getChildren().addAll(chatListView, chatInputBox);
-
-        // Adding components to the right panel
-        rightPanel.getChildren().addAll(editPrescriptionBox, editVaccinationBox, chatBox);
-
-        return rightPanel;
-    }
 
 
+    	
     private String[][] getAllData(String username) {
         System.out.println(username);
         String[][] allData = new String[2][]; // Initialize the array with 2 rows
@@ -399,54 +268,15 @@ public class DoctorPage extends BorderPane {
         return allData;
     }
 
+
+
+
+
+
+    
     private void logout(Stage primaryStage) {
         LoginPage loginPage = new LoginPage(primaryStage);
         Scene loginScene = new Scene(loginPage, 600, 800);
         primaryStage.setScene(loginScene);
     }
-    private void updateUI(String username) {
-        // Refresh the right panel to reflect changes after deleting a prescription
-        this.setRight(createRightPanel(allData, username));
-    }
-    
-    private void saveToPrescription(String username, String[] prescriptions) {
-    	 String prescriptionFilePath = username + "/prescription.txt";
-    	 try (BufferedWriter writer = new BufferedWriter(new FileWriter(prescriptionFilePath))) {
-    	        // Clear the file before writing
-    	        writer.write(""); // Clear the file content
-    	        
-    	        // Write each prescription to the file
-    	        for (String prescription : prescriptions) {
-    	            if (prescription != null) {
-    	                writer.write(prescription); // Write the prescription
-    	                writer.newLine(); // Move to the next line for the next prescription
-    	            }
-    	        }
-    	    } catch (IOException e) {
-    	        e.printStackTrace();
-    	    }
-    	 
-    	
-    }
-    
-    private void saveToVaccination(String username, String[] vaccinations) {
-   	 String prescriptionFilePath = username + "/vaccinations.txt";
-   	 try (BufferedWriter writer = new BufferedWriter(new FileWriter(prescriptionFilePath))) {
-   	        // Clear the file before writing
-   	        writer.write(""); // Clear the file content
-   	        
-   	        // Write each prescription to the file
-   	        for (String vaccination : vaccinations) {
-   	            if (vaccination != null) {
-   	                writer.write(vaccination); // Write the prescription
-   	                writer.newLine(); // Move to the next line for the next prescription
-   	            }
-   	        }
-   	    } catch (IOException e) {
-   	        e.printStackTrace();
-   	    }
-   	 
-   	
-   }
-    
 }
