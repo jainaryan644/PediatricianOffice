@@ -1,31 +1,29 @@
 package application;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.RadioButton;
-import javafx.scene.control.TextField;
-import javafx.scene.control.ToggleButton;
-import javafx.scene.control.ToggleGroup;
-import javafx.scene.layout.HBox;
+import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+
 public class RegisterPage extends VBox {
-    private TextField usernameField;
+    private Button confirmButton;
     private TextField firstNameField;
+    private TextField birthdayField;
     private TextField lastNameField;
     private TextField emailField;
     private PasswordField passwordField;
-    private PasswordField confirmpasswordField;
-    private ToggleGroup group;
+    private PasswordField confirmPasswordField;
     private Stage primaryStage;
-    private TextField birthdayField;
 
     public RegisterPage(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -43,11 +41,11 @@ public class RegisterPage extends VBox {
         lastNameField.setPrefWidth(200);
         lastNameField.setMaxWidth(200);
         lastNameField.setPromptText("Last Name");
-
+        
         birthdayField = new TextField();
         birthdayField.setPrefWidth(200);
         birthdayField.setMaxWidth(200);
-        birthdayField.setPromptText("Birthday MMDDYE");
+        birthdayField.setPromptText("Birthday mmddyyyy");
 
         emailField = new TextField();
         emailField.setPrefWidth(200);
@@ -59,116 +57,102 @@ public class RegisterPage extends VBox {
         passwordField.setMaxWidth(200);
         passwordField.setPromptText("Password");
 
-        confirmpasswordField = new PasswordField();
-        confirmpasswordField.setPrefWidth(200);
-        confirmpasswordField.setMaxWidth(200);
-        confirmpasswordField.setPromptText("Confirm Password");
+        confirmPasswordField = new PasswordField();
+        confirmPasswordField.setPrefWidth(200);
+        confirmPasswordField.setMaxWidth(200);
+        confirmPasswordField.setPromptText("Confirm Password");
 
-        HBox radioBox = new HBox(10);
-        radioBox.setAlignment(Pos.CENTER);
-
-        RadioButton patientRadio = new RadioButton("patient");
-        RadioButton doctorRadio = new RadioButton("doctor");
-        RadioButton nurseRadio = new RadioButton("nurse");
-
-        group = new ToggleGroup();
-        patientRadio.setToggleGroup(group);
-        doctorRadio.setToggleGroup(group);
-        nurseRadio.setToggleGroup(group);
-
-        radioBox.getChildren().addAll(patientRadio, doctorRadio, nurseRadio);
-
-        Button confirmButton = new Button("Register");
+        confirmButton = new Button("Register");
         Label error = new Label("");
+
         confirmButton.setOnAction(event -> createFolderByUsername());
 
-        getChildren().addAll(label, register, firstNameField, lastNameField, birthdayField, emailField, passwordField, confirmpasswordField, radioBox, confirmButton, error);
+        getChildren().addAll(label, register, firstNameField, lastNameField, birthdayField, emailField, passwordField, confirmPasswordField, confirmButton, error);
     }
+    
 
     private void createFolderByUsername() {
-        String birthday = birthdayField.getText();
-        String firstName = firstNameField.getText();
-        String lastName = lastNameField.getText();
-        String email = emailField.getText();
-        String password = passwordField.getText();
-        String username = firstName + lastName + birthday;
-        String confirmPassword = confirmpasswordField.getText();
-        ToggleButton selectedRole = (ToggleButton) group.getSelectedToggle();
-        String role = selectedRole != null ? selectedRole.getText() : ""; 
+        String firstName = firstNameField.getText().trim();
+        String lastName = lastNameField.getText().trim();
+        String birthday = birthdayField.getText().trim(); // Assuming the format is yyyyMMdd for simplicity
+        String email = emailField.getText().trim();
+        String password = passwordField.getText().trim();
+        String confirmPassword = confirmPasswordField.getText().trim();
+        // Assuming you have fields for phone, address, and insurance as well
+        
 
-        System.out.println("Current working directory: " + System.getProperty("user.dir"));
-
-        if (!username.isEmpty() && !firstName.isEmpty() && !lastName.isEmpty() && !email.isEmpty() && !password.isEmpty() && !confirmPassword.isEmpty() && !role.isEmpty()) {
-            File folder = new File(username);
-            if (!folder.exists()) {
-                if (folder.mkdir()) {
-                    System.out.println("Folder created: " + folder.getAbsolutePath());
-
-                    // Create role.txt file
-                    File roleFile = new File(folder, "role.txt");
-                    try {
-                        if (roleFile.createNewFile()) {
-                            System.out.println("role.txt file created: " + roleFile.getAbsolutePath());
-                            Utils.writeToFile(roleFile, role);
-                        } else {
-                            System.out.println("role.txt file already exists: " + roleFile.getAbsolutePath());
-                        }
-                    } catch (IOException e) {
-                        System.out.println("Failed to create role.txt file: " + e.getMessage());
-                    }
-
-                    // Create userDetails.txt file
-                    File userDetailsFile = new File(folder, "userDetails.txt");
-                    try {
-                        if (userDetailsFile.createNewFile()) {
-                            System.out.println("userDetails.txt file created: " + userDetailsFile.getAbsolutePath());
-                            String userDetailsText = "Username: " + username  + "\nPassword: " + password + "\nRole: " + role + "\nFirst Name: " + firstName + "\nLast Name: " + lastName + "\nEmail: " + email + "\nBirthday: " + birthday;
-                            Utils.writeToFile(userDetailsFile, userDetailsText);
-                        } else {
-                            System.out.println("userDetails.txt file already exists: " + userDetailsFile.getAbsolutePath());
-                        }
-                    } catch (IOException e) {
-                        System.out.println("Failed to create userDetails.txt file: " + e.getMessage());
-                    }
-
-                    // Create prescription.txt file
-                    File prescriptionFile = new File(folder, "prescription.txt");
-                    try {
-                        if (prescriptionFile.createNewFile()) {
-                            System.out.println("prescription.txt file created: " + prescriptionFile.getAbsolutePath());
-                            // Add initial content or leave it empty
-                        } else {
-                            System.out.println("prescription.txt file already exists: " + prescriptionFile.getAbsolutePath());
-                        }
-                    } catch (IOException e) {
-                        System.out.println("Failed to create prescription.txt file: " + e.getMessage());
-                    }
-
-                    // Create vaccination.txt file
-                    File vaccinationFile = new File(folder, "vaccinations.txt");
-                    try {
-                        if (vaccinationFile.createNewFile()) {
-                            System.out.println("vaccination.txt file created: " + vaccinationFile.getAbsolutePath());
-                            // Add initial content or leave it empty
-                        } else {
-                            System.out.println("vaccination.txt file already exists: " + vaccinationFile.getAbsolutePath());
-                        }
-                    } catch (IOException e) {
-                        System.out.println("Failed to create vaccination.txt file: " + e.getMessage());
-                    }
-
-                    LoginPage loginPage = new LoginPage(primaryStage);
-                    Scene loginScene = new Scene(loginPage, 600, 800);
-                    primaryStage.setScene(loginScene);
-                } else {
-                    System.out.println("Failed to create folder: " + folder.getAbsolutePath());
-                }
-            } else {
-                System.out.println("Folder already exists: " + folder.getAbsolutePath());
-            }
-        } else {
-            System.out.println("One or more fields are empty, cannot create folder and files.");
+        if (firstName.isEmpty() || lastName.isEmpty() || birthday.isEmpty() || email.isEmpty() || !password.equals(confirmPassword) || password.isEmpty()) {
+            showAlert("Validation failed", "Please ensure all fields are correctly filled and passwords match.");
+            return; // Exit if validation fails
         }
+
+        String username = (firstName + lastName + birthday).replaceAll("\\s+", "").toLowerCase(); // Username generation
+
+        // Create directory for the patient
+        File patientDir = new File(username);
+        if (!patientDir.exists()) {
+            if (!patientDir.mkdirs()) {
+                showAlert("Error", "Could not create directory for user.");
+                return;
+            }
+        }
+
+        // Write general information to generalInfo.txt
+        File generalInfoFile = new File(patientDir, "generalInfo.txt");
+        try (PrintWriter out = new PrintWriter(generalInfoFile)) {
+            out.println("First Name: " + firstName);
+            out.println("Last Name: " + lastName);
+            out.println("Email: " + email);
+            out.println("Phone: " + "");
+            out.println("Birthday: " + birthday);
+            out.println("Password: " + password); // Consider storing hashed password instead
+            out.println("Address: " + "");
+            out.println("Insurance: " + "");
+            out.println("Pharmacy:" + "");
+        } catch (IOException e) {
+            showAlert("Error", "An error occurred while writing general info: " + e.getMessage());
+            return;
+        }
+
+        // Append username and password to the patients.txt file
+        try (FileWriter fw = new FileWriter("patients.txt", true); BufferedWriter bw = new BufferedWriter(fw); PrintWriter out = new PrintWriter(bw)) {
+            out.println(username + "%" + password); // Using % as a delimiter
+        } catch (IOException e) {
+            showAlert("Error", "An error occurred while writing to the patients file: " + e.getMessage());
+        }
+
+        // Create or update username_visits.txt within the patient directory
+        File visitsFile = new File(patientDir, username + "_visits.txt");
+        if (!visitsFile.exists()) {
+            try {
+                visitsFile.createNewFile();
+            } catch (IOException e) {
+                showAlert("Error", "An error occurred while creating the visits file: " + e.getMessage());
+            }
+        }
+
+        // Show success alert and redirect to LoginPage
+        showAlert("Registration Successful", "Your registration is successful. Your username is: " + username);
+        redirectToLoginPage();
+    }
+    
+    private void showAlert(String title, String content) {
+        Alert alert = new Alert(AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
+
+
+    private void redirectToLoginPage() {
+        LoginPage loginPage = new LoginPage();
+        Scene loginScene = new Scene(loginPage, 600, 800);
+        primaryStage.setScene(loginScene);
+    }
+    
+    public Button getConfirmButton() {
+        return confirmButton;
     }
 }
 
