@@ -108,6 +108,9 @@ public class DoctorPage extends BorderPane {
         Button submitButton = new Button("Submit");
         HBox vaccinationButtonsBox = new HBox(saveButton, submitButton);
         vaccinationsBox.getChildren().addAll(vaccinationsTextArea, vaccinationButtonsBox);
+        
+        String username = "aryanjain20031002"; // This should be dynamically generated based on the patient
+        username.toLowerCase();
 
         // Chat box
         VBox chatBox = new VBox(new Label("Chat"));
@@ -118,13 +121,13 @@ public class DoctorPage extends BorderPane {
         HBox chatInputBox = new HBox(chatInputField, sendButton);
         //loadChatHistory("12345");
         chatBox.getChildren().addAll(chatTextArea, chatInputBox);
-        loadChatHistory("12345");
+        loadChatHistory(username);
         sendButton.setOnAction(e -> {
             String message = chatInputField.getText();
             if (!message.isEmpty()) {
-                sendMessage("12345", "Doctor", message); // Replace "Doctor" with the actual doctor's name
+                sendMessage(username, "Doctor", message); // Replace "Doctor" with the actual doctor's name
                 chatInputField.clear(); // Clear the text field after sending the message
-                loadChatHistory("12345"); // Load the chat history again to display the new message
+                loadChatHistory(username); // Load the chat history again to display the new message
             }
         });
 
@@ -301,9 +304,9 @@ public class DoctorPage extends BorderPane {
         }
     }
     
-    private void loadChatHistory(String patientID) {
+    private void loadChatHistory(String username) {
     	chatTextArea.clear(); // Clear previous messages
-        Path chatFilePath = Paths.get(patientID + "Chat.txt");
+        Path chatFilePath = Paths.get(username + "/Chat.txt");
         if (Files.exists(chatFilePath)) {
             try {
                 // Read all lines from the chat file and append to the chat display area
@@ -315,8 +318,8 @@ public class DoctorPage extends BorderPane {
         }
     }
     
-    private void appendMessageToFile(String patientID, String sender, String message) {
-        String filename = patientID + "Chat.txt";
+    private void appendMessageToFile(String username, String sender, String message) {
+        String filename = username + "/Chat.txt";
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename, true))) {
             String timestamp = DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(LocalDateTime.now());
             writer.write(timestamp + "\n" + sender + ":\n" + message + "\n\n");
@@ -326,15 +329,15 @@ public class DoctorPage extends BorderPane {
         }
     }
     
-    private void sendMessage(String patientID, String sender, String message) {
+    private void sendMessage(String username, String sender, String message) {
         if (message == null || message.trim().isEmpty()) {
             // Handle empty message case (e.g., show an alert or error)
             return;
         }
         // Assuming 'Doctor' is the sender. Replace with actual doctor's identification.
-        appendMessageToFile(patientID, sender, message);
+        appendMessageToFile(username, sender, message);
         // Reload chat history to display the new message
-        loadChatHistory(patientID);
+        loadChatHistory(username);
         // Clear the input field after sending the message
         chatInputField.clear();
     }
