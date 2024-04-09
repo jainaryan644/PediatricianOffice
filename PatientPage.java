@@ -56,9 +56,11 @@ public class PatientPage extends BorderPane {
 
 		// Text areas for the center
 		TextArea visitSummaryTextArea = new TextArea();
+		visitSummaryTextArea.setEditable(false);
 		visitSummaryTextArea.setPromptText("Visit Summary");
 		visitSummaryTextArea.setPrefHeight(390);
 		TextArea healthConcernsTextArea = new TextArea();
+		healthConcernsTextArea.setEditable(false);
 		healthConcernsTextArea.setPromptText("Health Concerns");
 		healthConcernsTextArea.setPrefHeight(390);
 
