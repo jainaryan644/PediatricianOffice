@@ -4,10 +4,15 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -75,7 +80,7 @@ public class LoginPage extends VBox {
                             showDoctorPage(firstName, lastName, email);
                             break;
                         case "nurse":
-                            showNursePage();
+                            showNursePage(firstName, lastName, email);
                             break;
                     }
                 } else {
@@ -164,9 +169,9 @@ public class LoginPage extends VBox {
         primaryStage.setScene(doctorScene);
     }
 
-    private void showNursePage() {
-        NursePage nursePage = new NursePage(primaryStage);
-        Scene nurseScene = new Scene(nursePage, 600, 800);
+    private void showNursePage(String firstName, String lastName, String email) {
+        NursePage nursePage = new NursePage(primaryStage, firstName, lastName, email);
+        Scene nurseScene = new Scene(nursePage, 1600, 1200);
         primaryStage.setScene(nurseScene);
     }
 

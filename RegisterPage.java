@@ -156,6 +156,30 @@ public class RegisterPage extends VBox {
                     } catch (IOException e) {
                         System.out.println("Failed to create vaccination.txt file: " + e.getMessage());
                     }
+                    
+                    File visitsFile = new File(folder, "visits.txt");
+                    try {
+                        if (visitsFile.createNewFile()) {
+                            System.out.println("visits.txt file created: " + visitsFile.getAbsolutePath());
+                            // Add initial content or leave it empty
+                        } else {
+                            System.out.println("visits.txt file already exists: " + visitsFile.getAbsolutePath());
+                        }
+                    } catch (IOException e) {
+                        System.out.println("Failed to create visits.txt file: " + e.getMessage());
+                    }
+                    
+                    File visitFolder = new File(folder, "visits");
+                    
+                    if (!visitFolder.exists()) {
+                        if (visitFolder.mkdir()) {
+                            System.out.println("Visits folder created: " + visitFolder.getAbsolutePath());
+                        } else {
+                            System.out.println("Failed to create visits folder: " + visitFolder.getAbsolutePath());
+                        }
+                    } else {
+                        System.out.println("Visits folder already exists: " + visitFolder.getAbsolutePath());
+                    }
 
                     LoginPage loginPage = new LoginPage(primaryStage);
                     Scene loginScene = new Scene(loginPage, 600, 800);

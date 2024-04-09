@@ -10,6 +10,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
@@ -44,9 +45,11 @@ public class DoctorPage extends BorderPane {
         searchButton.setOnAction(e -> {
             String username = searchField.getText(); // Capture the value of the search text field
             allData = getAllData(username);
-            VBox leftPanel = setupLeftPanel(firstName, lastName, email, allData);
+            VBox leftPanel = setupLeftPanel(firstName, lastName, email, allData, username, primaryStage);
             this.setLeft(leftPanel); // Update the left panel
             this.setRight(createRightPanel(allData, username)); // Pass the username to createRightPanel
+            VBox centerPanel = createCenterPanel(username,"", allData[2]);
+            this.setCenter(centerPanel);
         });
 
         HBox searchBox = new HBox(5); // 5 is the spacing between the text field and button
@@ -56,19 +59,12 @@ public class DoctorPage extends BorderPane {
 
         // Initialize allData and set up the left panel
         allData = getAllData("");
-        VBox leftPanel = setupLeftPanel(firstName, lastName, email, allData);
+        VBox leftPanel = setupLeftPanel(firstName, lastName, email, allData, "", primaryStage);
+        this.setRight(createRightPanel(allData, ""));
         this.setLeft(leftPanel);
 
         // Text areas for the center
-        TextArea visitSummaryTextArea = new TextArea();
-        visitSummaryTextArea.setPromptText("Visit Summary");
-        visitSummaryTextArea.setPrefHeight(390);
-        TextArea healthConcernsTextArea = new TextArea();
-        healthConcernsTextArea.setPromptText("Health Concerns");
-        healthConcernsTextArea.setPrefHeight(390);
-
-        // Center panel layout
-        VBox centerPanel = new VBox(visitSummaryTextArea, healthConcernsTextArea);
+        VBox centerPanel = createCenterPanel("", "", allData[2]);
         
         // Set the right panel
         
@@ -77,10 +73,21 @@ public class DoctorPage extends BorderPane {
         this.setCenter(centerPanel);
     }
 
-    private VBox setupLeftPanel(String firstName, String lastName, String email, String[][] allData) {
+    private VBox setupLeftPanel(String firstName, String lastName, String email, String[][] allData, String username, Stage primaryStage) {
         VBox leftPanel = new VBox();
         leftPanel.setPrefWidth(400);
-
+        String [] names = getFirstLastName(username);
+        String patientFirst = "";
+        String patientLast = "";
+        if (names[0] != null) {
+        	patientFirst = names[0];
+        }
+        if (names[1] != null) {
+        	patientLast = names[1];
+        }
+        
+        
+        Label user = new Label("Patient: " +  patientFirst + " " + patientLast + " Information");
         // Tabs for the left panel
         TabPane tabPane = new TabPane();
 
@@ -103,10 +110,28 @@ public class DoctorPage extends BorderPane {
         pharmacyContent.setPromptText("Pharmacy information displayed here...");
         Tab pharmacyTab = new Tab("Pharmacy Information", pharmacyContent);
 
-        TextArea visitsContent = new TextArea();
-        visitsContent.setEditable(false); // Make the text area uneditable
-        visitsContent.setPrefHeight(600); // Set preferred height
-        visitsContent.setPromptText("Visit history displayed here...");
+        ScrollPane visitsContent = new ScrollPane();
+        VBox visitsBox = new VBox();
+        if (allData[2] != null) {
+            for (String item : allData[2]) {
+                if (item != null) {
+                    HBox viewBox = new HBox();
+                    Label visit = new Label(item);
+                    Button view = new Button("view");
+                    
+                    // Add event handler to the view button
+                    view.setOnAction(event -> {
+                        // Call createCenterPanel method passing the label
+                        VBox centerPanel = createCenterPanel(username, item, allData[2]);
+                        this.setCenter(centerPanel); // Assuming 'this' refers to your parent container
+                    });
+                    
+                    viewBox.getChildren().addAll(visit, view);
+                    visitsBox.getChildren().add(viewBox);
+                }
+            }
+        }
+        visitsContent.setContent(visitsBox);
         Tab visitsTab = new Tab("Visits", visitsContent);
 
         // Make sure the tabs are not closable
@@ -146,12 +171,81 @@ public class DoctorPage extends BorderPane {
         Label doctorNameLabel = new Label("Doctor: " + firstName + " " + lastName);
         Label doctorEmailLabel = new Label("Email: " + email);
         Button logoutButton = new Button("Logout");
+        logoutButton.setOnAction(e -> logout(primaryStage));
         doctorProfileBox.getChildren().addAll(doctorNameLabel, doctorEmailLabel, logoutButton);
 
         // Adding doctor's profile box and logout button to the left panel
-        leftPanel.getChildren().addAll(tabPane, doctorProfileBox);
+        leftPanel.getChildren().addAll(user, tabPane, doctorProfileBox);
 
         return leftPanel;
+    }
+    
+    private VBox createCenterPanel(String username, String visit, String[] visits) {
+        // Text areas for the center
+    	String visitSummaryPath = username + "/visits" + "/" + visit + "/summary.txt";
+        String healthConcernsPath = username + "/visits" + "/" + visit + "/concern.txt";
+        TextArea visitSummaryTextArea = new TextArea();
+        visitSummaryTextArea.setPromptText("Visit Summary");
+        visitSummaryTextArea.setPrefHeight(390);
+        TextArea healthConcernsTextArea = new TextArea();
+        healthConcernsTextArea.setPromptText("Health Concerns");
+        healthConcernsTextArea.setPrefHeight(390);
+
+        // Read text from files and add to text areas
+        if (username != "") {
+        	try {
+                String visitSummaryText = readFile(visitSummaryPath);
+                visitSummaryTextArea.setText(visitSummaryText);
+
+                String healthConcernsText = readFile(healthConcernsPath);
+                healthConcernsTextArea.setText(healthConcernsText);
+            } catch (IOException e) {
+                e.printStackTrace(); // Handle or log the exception appropriately
+            }
+        }
+        Button addVisit = new Button("Save visit");
+        
+        addVisit.setOnAction(e -> {
+        	if (username == null || username.isEmpty()) {
+                System.err.println("Invalid username");
+                return; // Exit the method if username is not valid
+            }
+
+            
+            
+            
+
+            // Create directory path for the new visit
+            String visitDirectoryPath = username + File.separator + "visits" + File.separator + visit;
+            
+
+            
+            try {
+                String summaryFilePath = visitDirectoryPath + "/summary.txt";
+                BufferedWriter writer = new BufferedWriter(new FileWriter(summaryFilePath));
+                writer.write(visitSummaryTextArea.getText());
+                writer.close();
+            } catch (IOException ex) {
+                ex.printStackTrace(); // Handle or log the exception appropriately
+            }
+
+            // Write visit concerns to a file
+            try {
+                String concernsFilePath = visitDirectoryPath + "/concern.txt";
+                BufferedWriter writer = new BufferedWriter(new FileWriter(concernsFilePath));
+                writer.write(healthConcernsTextArea.getText());
+                writer.close();
+            } catch (IOException ex) {
+                ex.printStackTrace(); // Handle or log the exception appropriately
+            }
+
+            
+        });
+
+        // Center panel layout
+        VBox centerPanel = new VBox(visitSummaryTextArea, healthConcernsTextArea, addVisit);
+
+        return centerPanel;
     }
 
     private VBox createRightPanel(String allData[][], String username) {
@@ -328,9 +422,10 @@ public class DoctorPage extends BorderPane {
 
     private String[][] getAllData(String username) {
         System.out.println(username);
-        String[][] allData = new String[2][]; // Initialize the array with 2 rows
+        String[][] allData = new String[3][]; // Initialize the array with 2 rows
         String prescriptionFilePath = username + "/prescription.txt";
         String vaccinationsFilePath = username + "/vaccinations.txt";
+        String visitsFilePath = username + "/visits.txt";
 
         try {
             // Read prescription data
@@ -392,6 +487,34 @@ public class DoctorPage extends BorderPane {
             } else {
                 System.out.println("Vaccinations file does not exist");
             }
+            File visitsFile = new File(visitsFilePath);
+            if (vaccinationsFile.exists()) {
+                System.out.println("visits file exists");
+                BufferedReader visitsReader = new BufferedReader(new FileReader(visitsFile));
+                String line;
+                String[] visitsArray = new String[20]; // Array to store vaccinations, assuming a maximum of 20
+
+                // Read each line from the file and add it to vaccinationsArray
+                int index = 0;
+                while ((line = visitsReader.readLine()) != null && index < 20) {
+                	visitsArray[index++] = line;
+                }
+
+                // Store vaccinationsArray in the second index of allData
+                allData[2] = visitsArray;
+
+                // Print vaccinations
+                System.out.println("visits:");
+                for (String visit : allData[2]) {
+                    if (visit != null) {
+                        System.out.println(visit);
+                    }
+                }
+
+                visitsReader.close();
+            } else {
+                System.out.println("Vaccinations file does not exist");
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -429,6 +552,41 @@ public class DoctorPage extends BorderPane {
     	
     }
     
+    private String[] getFirstLastName(String username) {
+        String[] names = new String[3];
+        String userDetailsFilePath = username + "/userDetails.txt";
+
+        try {
+            File file = new File(userDetailsFilePath);
+            if (file.exists()) {
+                BufferedReader reader = new BufferedReader(new FileReader(file));
+                String username1 = reader.readLine();
+                username1 = (username1.split(":")[1].trim());
+                String password1 = reader.readLine();
+                password1 = (password1.split(":")[1].trim());
+                String role1 = reader.readLine();
+                role1 = (role1.split(":")[1].trim());
+                String first1 = reader.readLine();
+                first1 = (first1.split(":")[1].trim());
+                String last1 = reader.readLine();
+                last1 = (last1.split(":")[1].trim());
+                String email1 = reader.readLine();
+                email1 = (email1.split(":")[1].trim());
+                reader.close();
+
+                names[0] = first1;
+                names[1] = last1;
+                names[2] = email1;
+            } else {
+                System.out.println("File does not exist");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return names;
+    }
+    
     private void saveToVaccination(String username, String[] vaccinations) {
    	 String prescriptionFilePath = username + "/vaccinations.txt";
    	 try (BufferedWriter writer = new BufferedWriter(new FileWriter(prescriptionFilePath))) {
@@ -446,7 +604,44 @@ public class DoctorPage extends BorderPane {
    	        e.printStackTrace();
    	    }
    	 
+   	 
+   	 
    	
    }
+    private void saveToVisits(String username, String[] visits) {
+      	 String prescriptionFilePath = username + "/visits.txt";
+      	 try (BufferedWriter writer = new BufferedWriter(new FileWriter(prescriptionFilePath))) {
+      	        // Clear the file before writing
+      	        writer.write(""); // Clear the file content
+      	        
+      	        // Write each prescription to the file
+      	        for (String vaccination : visits) {
+      	            if (vaccination != null) {
+      	                writer.write(vaccination); // Write the prescription
+      	                writer.newLine(); // Move to the next line for the next prescription
+      	            }
+      	        }
+      	    } catch (IOException e) {
+      	        e.printStackTrace();
+      	    }
+      	 
+      	 
+      	 
+      	
+      }
+    
+    
+    
+    
+    private String readFile(String filePath) throws IOException {
+        StringBuilder contentBuilder = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                contentBuilder.append(line).append("\n");
+            }
+        }
+        return contentBuilder.toString();
+    }
     
 }
