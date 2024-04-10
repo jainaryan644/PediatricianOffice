@@ -1,647 +1,542 @@
-package application;
+//package application;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import javafx.application.Application;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.HashMap;
+import java.util.Map;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.List;
+import java.util.Scanner;
+import java.io.FileWriter;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+
+
+import java.time.format.DateTimeFormatter;
+
+import java.util.stream.Stream;
+
+import java.io.BufferedWriter;
 
 public class DoctorPage extends BorderPane {
-    private Label patientNameLabel = new Label("");
-    private Label doctorNameLabel = new Label("");
-    private Label doctorEmailLabel = new Label("");
-    private Button logoutButton;
-    private String[][] allData;
-  
 
-    public DoctorPage(Stage primaryStage, String firstName, String lastName, String email) {
-        // Main layout is BorderPane (it has 5 areas: top, right, bottom, left, center)
+    private Label patientNameLabel = new Label("Patient <Unknown>");
+    private Label doctorNameLabel = new Label("<Unknown>");
+    private Label doctorEmailLabel = new Label("<Unknown>");
+   
+    private TextArea visitSummaryTextArea = new TextArea();
+    private TextArea healthConcernsTextArea = new TextArea();
+    private TextArea prescriptionTextArea = new TextArea();
+    private TextArea vaccinationsTextArea = new TextArea();
+    
+    private Button logoutButton = new Button("Logout");
+    private VBox leftPanel;
+    private VBox visitsPanel; // Panel for displaying visit dates
+    private ScrollPane visitsScrollPane; // Scroll pane for visit dates
+    private Button saveVisitButton = new Button("Save Visit");
+    private Button seeVisitsButton = new Button("See Visits");
+    private String filePath;
+    private TextField searchField;
+    private PatientPage pp;
+    private String username;
+    private String pname;
+    static String doctorName;
+
+    private TextArea chatTextArea;
+
+   	private TextField chatInputField; // TextField for writing new messages
+
+   	private Button sendButton; // Button to send a message
+   	
+    public DoctorPage(Stage primaryStage, String username) { // Modify the constructor to accept username
         super();
-        logoutButton = new Button("Logout");
-        logoutButton.setOnAction(e -> logout(primaryStage));
-
-        patientNameLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: #2e8b57;"); // Optional styling
-        this.setTop(patientNameLabel);
-
-        // Add the search box to the top
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search Patient");
-
-        Button searchButton = new Button("Search");
-        searchButton.setOnAction(e -> {
-            String username = searchField.getText(); // Capture the value of the search text field
-            allData = getAllData(username);
-            VBox leftPanel = setupLeftPanel(firstName, lastName, email, allData, username, primaryStage);
-            this.setLeft(leftPanel); // Update the left panel
-            this.setRight(createRightPanel(allData, username)); // Pass the username to createRightPanel
-            VBox centerPanel = createCenterPanel(username,"", allData[2]);
-            this.setCenter(centerPanel);
+        this.username = username; // Set the username
+        
+        
+        logoutButton.setOnAction(e -> {
+            primaryStage.setScene(new Scene(new LoginPage(primaryStage), 300, 275));
+            primaryStage.show();
         });
-
-        HBox searchBox = new HBox(5); // 5 is the spacing between the text field and button
-        searchBox.getChildren().addAll(searchField, searchButton);
-
-        this.setTop(new VBox(patientNameLabel, searchBox));
-
-        // Initialize allData and set up the left panel
-        allData = getAllData("");
-        VBox leftPanel = setupLeftPanel(firstName, lastName, email, allData, "", primaryStage);
-        this.setRight(createRightPanel(allData, ""));
-        this.setLeft(leftPanel);
-
-        // Text areas for the center
-        VBox centerPanel = createCenterPanel("", "", allData[2]);
-        
-        // Set the right panel
-        
-
-        // Set the main layout areas
-        this.setCenter(centerPanel);
+        initializeUIComponents();
+        updateDoctorProfile(); // Call this method after initializing components
+    }
+    
+    public static Map<String, String> getDoctorInfoByUsername(String username) {
+        File file = new File("doctors.txt");
+        Map<String, String> doctorInfo = new HashMap<>();
+        try (Scanner scanner = new Scanner(file)) {
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                if (line.startsWith(username)) {
+                    // Username found, now extract Name and Email in the next lines
+                    while (scanner.hasNextLine()) {
+                        line = scanner.nextLine();
+                        if (line.startsWith("Name: ")) {
+                        	doctorName = line.substring(6).trim();
+                            doctorInfo.put("name", doctorName);
+                        } else if (line.startsWith("Email: ")) {
+                            doctorInfo.put("email", line.substring(7).trim());
+                            break; // Assuming email is the last info per doctor
+                        }
+                    }
+                    break;
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        return doctorInfo;
+    }
+ 
+    
+    private void updateDoctorProfile() {
+        Map<String, String> doctorInfo = getDoctorInfoByUsername(this.username);
+        pname = doctorInfo.getOrDefault("name", "<Unknown>");
+        String email = doctorInfo.getOrDefault("email", "<Unknown>");
+        doctorNameLabel.setText(pname);
+        doctorEmailLabel.setText(email);
     }
 
-    private VBox setupLeftPanel(String firstName, String lastName, String email, String[][] allData, String username, Stage primaryStage) {
-        VBox leftPanel = new VBox();
-        leftPanel.setPrefWidth(400);
-        String [] names = getFirstLastName(username);
-        String patientFirst = "";
-        String patientLast = "";
-        if (names[0] != null) {
-        	patientFirst = names[0];
-        }
-        if (names[1] != null) {
-        	patientLast = names[1];
-        }
+
+    private void initializeUIComponents() {
+        // Combining left panel and visits scroll pane into an HBox
+        Node leftPanelNode = setupLeftPanel();
+        Node visitsScrollPaneNode = setupVisitsScrollPane();
+        HBox combinedLeftSection = new HBox(visitsScrollPaneNode, leftPanelNode); // Combine left panel and visits panel
+
+        this.setTop(setupTopPanel());
+        this.setLeft(combinedLeftSection); // Updated to use the combined section
+        this.setCenter(setupCenterPanel());
+        this.setRight(setupRightPanel());
+        this.setBottom(setupBottomPanel());
+       
+
+        seeVisitsButton.setOnAction(e->  refreshVisitsPanel());
+        saveVisitButton.setOnAction(e -> saveVisitDetailsAndRefreshVisits());
         
+    }
+
+    private void saveVisitDetailsAndRefreshVisits() {
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(filePath));
+            String lastDate = "";
+            int lastDateIndex = -1;
+            // Find the last "Date: " entry to identify the most recent visit
+            for (int i = lines.size() - 1; i >= 0; i--) {
+                if (lines.get(i).startsWith("Date: ")) {
+                    lastDate = lines.get(i).substring(6);
+                    lastDateIndex = i;
+                    break;
+                }
+            }
+
+            if (!lastDate.isEmpty() && lastDateIndex != -1) {
+                // Update the most recent visit's details
+                lines.set(lastDateIndex + 1, "Visit Summary: " + visitSummaryTextArea.getText().trim());
+                lines.set(lastDateIndex + 2, "Health Concerns: " + healthConcernsTextArea.getText().trim());
+                lines.set(lastDateIndex + 3, "Prescriptions: " + prescriptionTextArea.getText().trim());
+                lines.set(lastDateIndex + 4, "Vaccinations: " + vaccinationsTextArea.getText().trim());
+
+                // Write the updated content back to the file
+                Files.write(Paths.get(filePath), lines, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+                
+                // Optionally, clear the text areas after saving
+                visitSummaryTextArea.clear();
+                healthConcernsTextArea.clear();
+                prescriptionTextArea.clear();
+                vaccinationsTextArea.clear();
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+
+
+    private void refreshVisitsPanel() {
+        visitsPanel.getChildren().clear(); // Clear existing content
+
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(filePath));
+            for (String line : lines) {
+                if (line.startsWith("Date: ")) {
+                    String date = line.substring(6); // Extract the date part
+                    Button dateButton = new Button(date);
+                    dateButton.setOnAction(e -> populateVisitDetails(date));
+                    visitsPanel.getChildren().add(dateButton);
+                }
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void populateVisitDetails(String date) {
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(filePath));
+            boolean foundDate = false;
+            
+            // Clear the text areas before populating new information
+            visitSummaryTextArea.clear();
+            healthConcernsTextArea.clear();
+            prescriptionTextArea.clear();
+            vaccinationsTextArea.clear();
+
+            for (String line : lines) {
+                if (line.startsWith("Date: ") && line.substring(6).equals(date)) {
+                    foundDate = true;
+                } else if (foundDate) {
+                    if (line.startsWith("Visit Summary: ")) {
+                        visitSummaryTextArea.setText(line.substring("Visit Summary: ".length()));
+                    } else if (line.startsWith("Health Concerns: ")) {
+                        healthConcernsTextArea.setText(line.substring("Health Concerns: ".length()));
+                    } else if (line.startsWith("Prescriptions: ")) {
+                        prescriptionTextArea.setText(line.substring("Prescriptions: ".length()));
+                    } else if (line.startsWith("Vaccinations: ")) {
+                        vaccinationsTextArea.setText(line.substring("Vaccinations: ".length()));
+                    } else if (line.trim().isEmpty() || line.startsWith("Date: ")) {
+                        break;
+                    }
+                }
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+
+
+    private Node setupBottomPanel() {
+        BorderPane bottomPanel = new BorderPane();
+        bottomPanel.setPadding(new Insets(10, 0, 10, 0));
+
+        HBox savePanel = new HBox(10, saveVisitButton, seeVisitsButton);
+        savePanel.setAlignment(Pos.CENTER);
+        bottomPanel.setCenter(savePanel);
+
+        BorderPane.setAlignment(logoutButton, Pos.CENTER_RIGHT);
+        bottomPanel.setLeft(logoutButton);
+
+
+        return bottomPanel;
+    }
+
+    private Node setupVisitsScrollPane() {
+        visitsPanel = new VBox(5);
+        visitsScrollPane = new ScrollPane(visitsPanel);
+        visitsScrollPane.setPrefWidth(80);
+        visitsScrollPane.setFitToWidth(true);
+
+        return visitsScrollPane;
+    }
+
+    private Node setupTopPanel() {
+        patientNameLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: #2e8b57;");
+        return patientNameLabel;
+    }
+
+    private Node setupLeftPanel() {
+        leftPanel = new VBox(10);
+        leftPanel.setPrefWidth(350);
+
+        // Patient search field and button
+        searchField = new TextField();
+        searchField.setPromptText("Search Patient by Username");
+        Button searchButton = new Button("Search");
+        searchButton.setOnAction(e ->{
+        	searchPatient(searchField.getText().trim());     	
+        });
         
-        Label user = new Label("Patient: " +  patientFirst + " " + patientLast + " Information");
-        // Tabs for the left panel
+        HBox searchBox = new HBox(5, searchField, searchButton);
+        leftPanel.getChildren().add(searchBox);
+
+        // Tabs without the Visits tab
         TabPane tabPane = new TabPane();
+        tabPane.getTabs().addAll(
+                createTab("Prescription", "Prescription information displayed here..."),
+                createTab("Immunization Records", "Immunization records displayed here..."),
+                createTab("Pharmacy Information", "Pharmacy information displayed here...")
+        );
 
-        // Create a text area for each tab content
-        TextArea prescriptionContent = new TextArea();
-        prescriptionContent.setEditable(false); // Make the text area uneditable
-        prescriptionContent.setPrefHeight(600); // Set preferred height
-        prescriptionContent.setPromptText("Prescription information displayed here...");
-        Tab prescriptionTab = new Tab("Prescription", prescriptionContent);
-
-        TextArea immunizationContent = new TextArea();
-        immunizationContent.setEditable(false); // Make the text area uneditable
-        immunizationContent.setPrefHeight(600); // Set preferred height
-        immunizationContent.setPromptText("Immunization records displayed here...");
-        Tab immunizationTab = new Tab("Immunization Records", immunizationContent);
-
-        TextArea pharmacyContent = new TextArea();
-        pharmacyContent.setEditable(false); // Make the text area uneditable
-        pharmacyContent.setPrefHeight(600); // Set preferred height
-        pharmacyContent.setPromptText("Pharmacy information displayed here...");
-        Tab pharmacyTab = new Tab("Pharmacy Information", pharmacyContent);
-
-        ScrollPane visitsContent = new ScrollPane();
-        VBox visitsBox = new VBox();
-        if (allData[2] != null) {
-            for (String item : allData[2]) {
-                if (item != null) {
-                    HBox viewBox = new HBox();
-                    Label visit = new Label(item);
-                    Button view = new Button("view");
-                    
-                    // Add event handler to the view button
-                    view.setOnAction(event -> {
-                        // Call createCenterPanel method passing the label
-                        VBox centerPanel = createCenterPanel(username, item, allData[2]);
-                        this.setCenter(centerPanel); // Assuming 'this' refers to your parent container
-                    });
-                    
-                    viewBox.getChildren().addAll(visit, view);
-                    visitsBox.getChildren().add(viewBox);
-                }
-            }
-        }
-        visitsContent.setContent(visitsBox);
-        Tab visitsTab = new Tab("Visits", visitsContent);
-
-        // Make sure the tabs are not closable
-        prescriptionTab.setClosable(false);
-        immunizationTab.setClosable(false);
-        pharmacyTab.setClosable(false);
-        visitsTab.setClosable(false);
-
-        // Add all tabs to the tab pane
-        tabPane.getTabs().addAll(prescriptionTab, immunizationTab, pharmacyTab, visitsTab);
-
-        // Add data to prescription content if not null
-        if (allData[0] != null) {
-            StringBuilder prescriptionBuilder = new StringBuilder();
-            for (String item : allData[0]) {
-                if (item != null) {
-                    prescriptionBuilder.append(item).append("\n");
-                }
-            }
-            prescriptionContent.setText(prescriptionBuilder.toString());
-        }
-
-        // Add data to immunization content if not null
-        if (allData[1] != null) {
-            StringBuilder immunizationBuilder = new StringBuilder();
-            for (String item : allData[1]) {
-                if (item != null) {
-                    immunizationBuilder.append(item).append("\n");
-                }
-            }
-            immunizationContent.setText(immunizationBuilder.toString());
-        }
-
-        // Doctor's profile box at the bottom
-        VBox doctorProfileBox = new VBox(10); // 10 is the spacing between elements
-        doctorProfileBox.setStyle("-fx-background-color: #add8e6; -fx-padding: 10;");
-        Label doctorNameLabel = new Label("Doctor: " + firstName + " " + lastName);
-        Label doctorEmailLabel = new Label("Email: " + email);
-        Button logoutButton = new Button("Logout");
-        logoutButton.setOnAction(e -> logout(primaryStage));
-        doctorProfileBox.getChildren().addAll(doctorNameLabel, doctorEmailLabel, logoutButton);
-
-        // Adding doctor's profile box and logout button to the left panel
-        leftPanel.getChildren().addAll(user, tabPane, doctorProfileBox);
+        VBox doctorProfileBox = setupDoctorProfileBox();
+        leftPanel.getChildren().addAll(tabPane, doctorProfileBox);
 
         return leftPanel;
     }
-    
-    private VBox createCenterPanel(String username, String visit, String[] visits) {
-        // Text areas for the center
-    	String visitSummaryPath = username + "/visits" + "/" + visit + "/summary.txt";
-        String healthConcernsPath = username + "/visits" + "/" + visit + "/concern.txt";
-        TextArea visitSummaryTextArea = new TextArea();
-        visitSummaryTextArea.setPromptText("Visit Summary");
-        visitSummaryTextArea.setPrefHeight(390);
-        TextArea healthConcernsTextArea = new TextArea();
-        healthConcernsTextArea.setPromptText("Health Concerns");
-        healthConcernsTextArea.setPrefHeight(390);
 
-        // Read text from files and add to text areas
-        if (username != "") {
-        	try {
-                String visitSummaryText = readFile(visitSummaryPath);
-                visitSummaryTextArea.setText(visitSummaryText);
+    private void loadChatHistory(String username) {
 
-                String healthConcernsText = readFile(healthConcernsPath);
-                healthConcernsTextArea.setText(healthConcernsText);
-            } catch (IOException e) {
-                e.printStackTrace(); // Handle or log the exception appropriately
-            }
-        }
-        Button addVisit = new Button("Save visit");
+    	//chatTextArea.clear(); // Clear previous messages
+
+        Path chatFilePath = Paths.get(username + "/Chat.txt");
+
         
-        addVisit.setOnAction(e -> {
-        	if (username == null || username.isEmpty()) {
-                System.err.println("Invalid username");
-                return; // Exit the method if username is not valid
-            }
 
-            
-            
-            
+        if (Files.exists(chatFilePath)) {
 
-            // Create directory path for the new visit
-            String visitDirectoryPath = username + File.separator + "visits" + File.separator + visit;
-            
-
-            
             try {
-                String summaryFilePath = visitDirectoryPath + "/summary.txt";
-                BufferedWriter writer = new BufferedWriter(new FileWriter(summaryFilePath));
-                writer.write(visitSummaryTextArea.getText());
-                writer.close();
-            } catch (IOException ex) {
-                ex.printStackTrace(); // Handle or log the exception appropriately
+
+                // Read all lines from the chat file and append to the chat display area
+
+                Files.lines(chatFilePath).forEach(line -> chatTextArea.appendText(line + "\n"));
+
+            } catch (IOException e) {
+
+                e.printStackTrace(); // Handle exceptions here
+
+                // Maybe show an alert to the user or log the error
+
             }
 
-            // Write visit concerns to a file
-            try {
-                String concernsFilePath = visitDirectoryPath + "/concern.txt";
-                BufferedWriter writer = new BufferedWriter(new FileWriter(concernsFilePath));
-                writer.write(healthConcernsTextArea.getText());
-                writer.close();
-            } catch (IOException ex) {
-                ex.printStackTrace(); // Handle or log the exception appropriately
+        }
+
+        sendButton.setOnAction(e -> {
+
+            String message = chatInputField.getText();
+
+            if (!message.isEmpty()) {
+
+                sendMessage(username, "Doctor " + doctorName, message); // Replace "Doctor" with the actual doctor's name
+
+                chatInputField.clear(); // Clear the text field after sending the message
+
+                loadChatHistory(username); // Load the chat history again to display the new message
+
             }
 
-            
         });
 
-        // Center panel layout
-        VBox centerPanel = new VBox(visitSummaryTextArea, healthConcernsTextArea, addVisit);
+    }
 
+    
+
+    private void appendMessageToFile(String username, String sender, String message) {
+
+        String filename = username + "/Chat.txt";
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename, true))) {
+
+            String timestamp = DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(LocalDateTime.now());
+
+            writer.write(timestamp + "\n" + sender + ":\n" + message + "\n\n");
+
+            writer.newLine();
+
+        } catch (IOException e) {
+
+            e.printStackTrace(); // Handle exceptions here
+
+        }
+
+    }
+
+    
+
+    private void sendMessage(String patientID, String sender, String message) {
+
+        if (message == null || message.trim().isEmpty()) {
+
+            // Handle empty message case (e.g., show an alert or error)
+
+            return;
+
+        }
+
+        // Assuming 'Doctor' is the sender. Replace with actual doctor's identification.
+
+        appendMessageToFile(patientID, sender, message);
+
+        // Reload chat history to display the new message
+
+        loadChatHistory(patientID);
+
+        // Clear the input field after sending the message
+
+        chatInputField.clear();
+
+    }
+
+    private Node setupCenterPanel() {
+        VBox centerPanel = new VBox();
+        centerPanel.setPrefWidth(350);
+        visitSummaryTextArea = new TextArea("Visit Summary");
+        visitSummaryTextArea.setPrefHeight(390);
+        healthConcernsTextArea = new TextArea("Health Concerns");
+        healthConcernsTextArea.setPrefHeight(390);
+        centerPanel.getChildren().addAll(visitSummaryTextArea, healthConcernsTextArea);
         return centerPanel;
     }
 
-    private VBox createRightPanel(String allData[][], String username) {
-    	String[] prescriptions = allData[0];
-    	String[] vaccinations = allData[1];
-
+    private Node setupRightPanel() {
         VBox rightPanel = new VBox();
+        
+        
         rightPanel.setSpacing(10);
         rightPanel.setPrefWidth(300);
+        
+        
 
         // Edit Prescription box
-        VBox editPrescriptionBox = new VBox();
-        editPrescriptionBox.setSpacing(5);
-        Label prescriptionLabel = new Label("Edit Prescription");
+        VBox editPrescriptionBox = setupEditPrescriptionBox();
 
-        // VBox to hold list of prescriptions
-        VBox listPrescription = new VBox();
-
-        if (prescriptions != null) {
-            for (int i = 0; i < prescriptions.length; i++) {
-                String prescription = prescriptions[i];
-                if (prescription != null) {
-                    HBox prescriptionWhole = new HBox();
-                    Label prescriptionTitle = new Label(prescription);
-                    Button deleteButton = new Button("Delete");
-                    prescriptionWhole.getChildren().addAll(prescriptionTitle, deleteButton);
-
-                    // Attach event handler to delete button
-                    final int indexToRemove = i; // capture the index before the lambda
-                    deleteButton.setOnAction(event -> {
-                        prescriptions[indexToRemove] = null;
-                        listPrescription.getChildren().remove(prescriptionWhole);
-                        updateUI(username); // Update UI after prescription is removed
-                    });
-
-                    listPrescription.getChildren().add(prescriptionWhole); // Add each prescription to the list
-                }
-            }
-        }
-
-        TextField prescriptionTextField = new TextField();
-        Button savePrescriptionButton = new Button("Save");
-        Button addPrescriptionButton = new Button("Add");
-
-        // Attach event handler to the "Add" button
-        addPrescriptionButton.setOnAction(event -> {
-            String newPrescription = prescriptionTextField.getText().trim();
-            if (!newPrescription.isEmpty()) {
-                // Add the new prescription to the array
-                for (int i = 0; i < prescriptions.length; i++) {
-                    if (prescriptions[i] == null) {
-                        prescriptions[i] = newPrescription;
-                        break;
-                    }
-                }
-
-                // Create a new HBox for the new prescription
-                HBox newPrescriptionWhole = new HBox();
-                Label newPrescriptionTitle = new Label(newPrescription);
-                Button newDeleteButton = new Button("Delete");
-                newPrescriptionWhole.getChildren().addAll(newPrescriptionTitle, newDeleteButton);
-
-                // Attach event handler to the new delete button
-                final int newIndexToRemove = prescriptions.length - 1; // capture the index before the lambda
-                newDeleteButton.setOnAction(event2 -> {
-                    prescriptions[newIndexToRemove] = null;
-                    listPrescription.getChildren().remove(newPrescriptionWhole);
-                    updateUI(username); // Update UI after prescription is removed
-                });
-
-                listPrescription.getChildren().add(newPrescriptionWhole); // Add the new prescription to the list
-                prescriptionTextField.clear(); // Clear the text field
-                updateUI(username); // Update the UI
-            }
-        });
-        
-        savePrescriptionButton.setOnAction(event -> {
-        	saveToPrescription(username, prescriptions);
-        });
-         
-
-        HBox prescriptionButtonsBox = new HBox(savePrescriptionButton, addPrescriptionButton);
-        editPrescriptionBox.getChildren().addAll(prescriptionLabel, listPrescription, prescriptionTextField, prescriptionButtonsBox);
-        
-        
-        VBox editVaccinationBox = new VBox();  
-        editVaccinationBox.setSpacing(5);
-        Label VaccinationLabel = new Label("Edit Vaccination");
-
-        // VBox to hold list of prescriptions
-        VBox listVaccination = new VBox();
-
-        if (vaccinations != null) {
-            for (int i = 0; i < vaccinations.length; i++) {
-                String vaccination = vaccinations[i];
-                if (vaccination != null) {
-                    HBox vaccinationWhole = new HBox();
-                    Label vaccinationTitle = new Label(vaccination);
-                    Button deleteButton = new Button("Delete");
-                    vaccinationWhole.getChildren().addAll(vaccinationTitle, deleteButton);
-
-                    // Attach event handler to delete button
-                    final int indexToRemove = i; // capture the index before the lambda
-                    deleteButton.setOnAction(event -> {
-                    	vaccinations[indexToRemove] = null;
-                        listVaccination.getChildren().remove(vaccinationWhole);
-                        updateUI(username); // Update UI after prescription is removed
-                    });
-
-                    listVaccination.getChildren().add(vaccinationWhole); // Add each prescription to the list
-                }
-            }
-        }
-
-        TextField vaccinationTextField = new TextField();
-        Button saveVaccinationButton = new Button("Save");
-        Button addVaccinationButton = new Button("Add");
-
-        // Attach event handler to the "Add" button
-        addVaccinationButton.setOnAction(event -> {
-            String newVaccination = vaccinationTextField.getText().trim();
-            if (!newVaccination.isEmpty()) {
-                // Add the new prescription to the array
-                for (int i = 0; i < vaccinations.length; i++) {
-                    if (vaccinations[i] == null) {
-                    	vaccinations[i] = newVaccination;
-                        break;
-                    }
-                }
-
-                // Create a new HBox for the new prescription
-                HBox newVaccinationWhole = new HBox();
-                Label newVaccinationTitle = new Label(newVaccination);
-                Button newDeleteButton = new Button("Delete");
-                newVaccinationWhole.getChildren().addAll(newVaccinationTitle, newDeleteButton);
-
-                // Attach event handler to the new delete button
-                final int newIndexToRemove = vaccinations.length - 1; // capture the index before the lambda
-                newDeleteButton.setOnAction(event2 -> {
-                	vaccinations[newIndexToRemove] = null;
-                    listVaccination.getChildren().remove(newVaccinationWhole);
-                    updateUI(username); // Update UI after prescription is removed
-                });
-
-                listVaccination.getChildren().add(newVaccinationWhole); // Add the new prescription to the list
-                vaccinationTextField.clear(); // Clear the text field
-                updateUI(username); // Update the UI
-            }
-        });
-        
-        saveVaccinationButton.setOnAction(event -> {
-        	saveToVaccination(username, vaccinations);
-        });
-         
-
-        HBox vaccinationButtonsBox = new HBox(saveVaccinationButton, addVaccinationButton); 
-        editVaccinationBox.getChildren().addAll(VaccinationLabel, listVaccination, vaccinationTextField, vaccinationButtonsBox);
-        
+        // Vaccinations box
+        VBox vaccinationsBox = setupVaccinationsBox();
 
         // Chat box
         VBox chatBox = new VBox(new Label("Chat"));
-        ListView<String> chatListView = new ListView<>();
-        TextField chatInputField = new TextField();
-        Button sendButton = new Button("Send");
+
+        chatTextArea = new TextArea();
+
+        chatTextArea.setEditable(false);
+
+        chatInputField = new TextField();
+
+        sendButton = new Button("Send");
+
         HBox chatInputBox = new HBox(chatInputField, sendButton);
-        chatBox.getChildren().addAll(chatListView, chatInputBox);
+
+        //loadChatHistory("12345");
+
+        chatBox.getChildren().addAll(chatTextArea, chatInputBox);
+
+        loadChatHistory(searchField.getText().trim());
+
+        sendButton.setOnAction(e -> {
+
+            String message = chatInputField.getText();
+
+            if (!message.isEmpty()) {
+
+                sendMessage(searchField.getText().trim(), "Patient", message); // Replace "Doctor" with the actual doctor's name
+
+                chatInputField.clear(); // Clear the text field after sending the message
+
+                loadChatHistory(searchField.getText().trim()); // Load the chat history again to display the new message
+
+            }
+
+        });
+
+
+
+
 
         // Adding components to the right panel
-        rightPanel.getChildren().addAll(editPrescriptionBox, editVaccinationBox, chatBox);
+        rightPanel.getChildren().addAll(editPrescriptionBox, vaccinationsBox, chatBox);
 
         return rightPanel;
     }
 
+    private VBox setupEditPrescriptionBox() {
+        VBox box = new VBox(5);
+        Label label = new Label("Edit Prescription");
+        prescriptionTextArea = new TextArea();
+       
+       
+        prescriptionTextArea.setPrefHeight(200);
 
-    private String[][] getAllData(String username) {
-        System.out.println(username);
-        String[][] allData = new String[3][]; // Initialize the array with 2 rows
-        String prescriptionFilePath = username + "/prescription.txt";
-        String vaccinationsFilePath = username + "/vaccinations.txt";
-        String visitsFilePath = username + "/visits.txt";
+        box.getChildren().addAll(label,  prescriptionTextArea);
+        return box;
+    }
 
-        try {
-            // Read prescription data
-            File prescriptionFile = new File(prescriptionFilePath);
-            if (prescriptionFile.exists()) {
-                System.out.println("Prescription file exists");
-                BufferedReader prescriptionReader = new BufferedReader(new FileReader(prescriptionFile));
-                String line;
-                String[] prescriptionsArray = new String[20]; // Array to store prescriptions, assuming a maximum of 20
+    private VBox setupVaccinationsBox() {
+        VBox box = new VBox(5);
+        Label label = new Label("Edit Vaccinations");
+        vaccinationsTextArea = new TextArea();
+        
+        
+        box.getChildren().addAll(label, vaccinationsTextArea);
+        return box;
+    }
 
-                // Read each line from the file and add it to prescriptionsArray
-                int index = 0;
-                while ((line = prescriptionReader.readLine()) != null && index < 20) {
-                    prescriptionsArray[index++] = line;
-                }
+    private VBox setupChatBox() {
 
-                // Store prescriptionsArray in the first index of allData
-                allData[0] = prescriptionsArray;
+        VBox box = new VBox(5);
 
-                // Print prescriptions
-                System.out.println("Prescriptions:");
-                for (String prescription : allData[0]) {
-                    if (prescription != null) {
-                        System.out.println(prescription);
+        Label label = new Label("Chat");
+
+        TextArea chatTextArea = new TextArea();
+
+        TextField chatInputField = new TextField();
+
+        Button sendButton = new Button("Send");
+
+        
+
+        HBox inputBox = new HBox(chatInputField, sendButton);
+
+        box.getChildren().addAll(label, chatTextArea, inputBox);
+
+        return box;
+
+    }
+
+    private Tab createTab(String title, String promptText) {
+        TextArea textArea = new TextArea();
+        textArea.setEditable(false);
+        textArea.setPrefHeight(600);
+        textArea.setPromptText(promptText);
+        Tab tab = new Tab(title, textArea);
+        tab.setClosable(false);
+        return tab;
+    }
+
+    private VBox setupDoctorProfileBox() {
+        VBox doctorProfileBox = new VBox(10);
+        doctorProfileBox.getChildren().addAll(doctorNameLabel, doctorEmailLabel, logoutButton);
+        return doctorProfileBox;
+    }
+
+    private void searchPatient(String username) {
+        File patientDir = new File(username);
+        File generalInfoFile = new File(patientDir, "generalInfo.txt");
+
+        if (!generalInfoFile.exists()) {
+            return; // Optionally, show an alert here
+        }
+        
+      //loadChatHistory(searchField.getText().trim());
+
+        //pp= new PatientPage(username);
+
+        loadChatHistory(searchField.getText().trim());
+
+        filePath = new File(patientDir, username + "_visits.txt").getAbsolutePath();
+
+        try (Scanner scanner = new Scanner(generalInfoFile)) {
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                String[] parts = line.split(": ");
+                if (parts.length == 2) {
+                    String key = parts[0].trim();
+                    String value = parts[1].trim();
+                    if (key.equals("First Name") || key.equals("Last Name")) {
+                        updatePatientNameLabel(value, key);
                     }
                 }
-
-                prescriptionReader.close();
-            } else {
-                System.out.println("Prescription file does not exist");
             }
-
-            // Read vaccinations data
-            File vaccinationsFile = new File(vaccinationsFilePath);
-            if (vaccinationsFile.exists()) {
-                System.out.println("Vaccinations file exists");
-                BufferedReader vaccinationsReader = new BufferedReader(new FileReader(vaccinationsFile));
-                String line;
-                String[] vaccinationsArray = new String[20]; // Array to store vaccinations, assuming a maximum of 20
-
-                // Read each line from the file and add it to vaccinationsArray
-                int index = 0;
-                while ((line = vaccinationsReader.readLine()) != null && index < 20) {
-                    vaccinationsArray[index++] = line;
-                }
-
-                // Store vaccinationsArray in the second index of allData
-                allData[1] = vaccinationsArray;
-
-                // Print vaccinations
-                System.out.println("Vaccinations:");
-                for (String vaccination : allData[1]) {
-                    if (vaccination != null) {
-                        System.out.println(vaccination);
-                    }
-                }
-
-                vaccinationsReader.close();
-            } else {
-                System.out.println("Vaccinations file does not exist");
-            }
-            File visitsFile = new File(visitsFilePath);
-            if (vaccinationsFile.exists()) {
-                System.out.println("visits file exists");
-                BufferedReader visitsReader = new BufferedReader(new FileReader(visitsFile));
-                String line;
-                String[] visitsArray = new String[20]; // Array to store vaccinations, assuming a maximum of 20
-
-                // Read each line from the file and add it to vaccinationsArray
-                int index = 0;
-                while ((line = visitsReader.readLine()) != null && index < 20) {
-                	visitsArray[index++] = line;
-                }
-
-                // Store vaccinationsArray in the second index of allData
-                allData[2] = visitsArray;
-
-                // Print vaccinations
-                System.out.println("visits:");
-                for (String visit : allData[2]) {
-                    if (visit != null) {
-                        System.out.println(visit);
-                    }
-                }
-
-                visitsReader.close();
-            } else {
-                System.out.println("Vaccinations file does not exist");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            // Optionally, show an alert here
         }
-
-        return allData;
     }
 
-    private void logout(Stage primaryStage) {
-        LoginPage loginPage = new LoginPage(primaryStage);
-        Scene loginScene = new Scene(loginPage, 600, 800);
-        primaryStage.setScene(loginScene);
-    }
-    private void updateUI(String username) {
-        // Refresh the right panel to reflect changes after deleting a prescription
-        this.setRight(createRightPanel(allData, username));
-    }
-    
-    private void saveToPrescription(String username, String[] prescriptions) {
-    	 String prescriptionFilePath = username + "/prescription.txt";
-    	 try (BufferedWriter writer = new BufferedWriter(new FileWriter(prescriptionFilePath))) {
-    	        // Clear the file before writing
-    	        writer.write(""); // Clear the file content
-    	        
-    	        // Write each prescription to the file
-    	        for (String prescription : prescriptions) {
-    	            if (prescription != null) {
-    	                writer.write(prescription); // Write the prescription
-    	                writer.newLine(); // Move to the next line for the next prescription
-    	            }
-    	        }
-    	    } catch (IOException e) {
-    	        e.printStackTrace();
-    	    }
-    	 
-    	
-    }
-    
-    private String[] getFirstLastName(String username) {
-        String[] names = new String[3];
-        String userDetailsFilePath = username + "/userDetails.txt";
-
-        try {
-            File file = new File(userDetailsFilePath);
-            if (file.exists()) {
-                BufferedReader reader = new BufferedReader(new FileReader(file));
-                String username1 = reader.readLine();
-                username1 = (username1.split(":")[1].trim());
-                String password1 = reader.readLine();
-                password1 = (password1.split(":")[1].trim());
-                String role1 = reader.readLine();
-                role1 = (role1.split(":")[1].trim());
-                String first1 = reader.readLine();
-                first1 = (first1.split(":")[1].trim());
-                String last1 = reader.readLine();
-                last1 = (last1.split(":")[1].trim());
-                String email1 = reader.readLine();
-                email1 = (email1.split(":")[1].trim());
-                reader.close();
-
-                names[0] = first1;
-                names[1] = last1;
-                names[2] = email1;
-            } else {
-                System.out.println("File does not exist");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+    private void updatePatientNameLabel(String value, String key) {
+        if (key.equals("First Name")) {
+            patientNameLabel.setText("Patient " + value + " " + patientNameLabel.getText().substring(patientNameLabel.getText().indexOf(" ")).trim());
+        } else if (key.equals("Last Name")) {
+            patientNameLabel.setText(patientNameLabel.getText().replace("<Unknown>", value));
         }
-
-        return names;
     }
-    
-    private void saveToVaccination(String username, String[] vaccinations) {
-   	 String prescriptionFilePath = username + "/vaccinations.txt";
-   	 try (BufferedWriter writer = new BufferedWriter(new FileWriter(prescriptionFilePath))) {
-   	        // Clear the file before writing
-   	        writer.write(""); // Clear the file content
-   	        
-   	        // Write each prescription to the file
-   	        for (String vaccination : vaccinations) {
-   	            if (vaccination != null) {
-   	                writer.write(vaccination); // Write the prescription
-   	                writer.newLine(); // Move to the next line for the next prescription
-   	            }
-   	        }
-   	    } catch (IOException e) {
-   	        e.printStackTrace();
-   	    }
-   	 
-   	 
-   	 
-   	
-   }
-    private void saveToVisits(String username, String[] visits) {
-      	 String prescriptionFilePath = username + "/visits.txt";
-      	 try (BufferedWriter writer = new BufferedWriter(new FileWriter(prescriptionFilePath))) {
-      	        // Clear the file before writing
-      	        writer.write(""); // Clear the file content
-      	        
-      	        // Write each prescription to the file
-      	        for (String vaccination : visits) {
-      	            if (vaccination != null) {
-      	                writer.write(vaccination); // Write the prescription
-      	                writer.newLine(); // Move to the next line for the next prescription
-      	            }
-      	        }
-      	    } catch (IOException e) {
-      	        e.printStackTrace();
-      	    }
-      	 
-      	 
-      	 
-      	
-      }
-    
-    
-    
-    
-    private String readFile(String filePath) throws IOException {
-        StringBuilder contentBuilder = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                contentBuilder.append(line).append("\n");
-            }
-        }
-        return contentBuilder.toString();
-    }
-    
 }
