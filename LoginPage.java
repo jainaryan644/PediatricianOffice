@@ -1,138 +1,189 @@
-//package application;
+package application;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Text;
 import javafx.stage.Stage;
-
-import java.util.function.Consumer;
 
 public class LoginPage extends VBox {
 
     private Hyperlink forgotPasswordLink;
-    private Button loginButton;
-    private TextField usernameField;
-    private PasswordField passwordField;
-    private Text loginStatus;
-    private ToggleGroup group;
-    private Runnable onRegisterRequested;
-    private Consumer<String> onAuthenticated;
-    private String authenticatedUsername = null; 
-
+    private Button loginButton; 
+    private TextField usernameField; 
+    private PasswordField passwordField; 
+    private ToggleGroup group; 
+    private Stage primaryStage;
 
     public LoginPage(Stage primaryStage) {
-        super(10);
+        this.primaryStage = primaryStage;
         setAlignment(Pos.CENTER);
-        initializeComponents(primaryStage);
-    }
-    
-    private void initializeComponents(Stage primaryStage) {
         Label label = new Label("Blue Angels Pediatrics");
         Label login = new Label("Login");
+
         usernameField = new TextField();
+        usernameField.setPrefWidth(200); 
+        usernameField.setMaxWidth(200); 
+        usernameField.setPromptText("Username");
+
         passwordField = new PasswordField();
-        setupFields();
-        
-        loginButton = new Button("Login");
-        forgotPasswordLink = new Hyperlink("No Account, Click here");
-        forgotPasswordLink.setOnAction(e -> {
-            if (onRegisterRequested != null) {
-                onRegisterRequested.run();
-            }
-        });
-        loginStatus = new Text();
-        
+        passwordField.setPrefWidth(200); 
+        passwordField.setMaxWidth(200); 
+        passwordField.setPromptText("Password");
+
+        HBox radioBox = new HBox(10);
+        radioBox.setAlignment(Pos.CENTER);
         RadioButton patientRadio = new RadioButton("patient");
         RadioButton doctorRadio = new RadioButton("doctor");
         RadioButton nurseRadio = new RadioButton("nurse");
-        group = new ToggleGroup();
+        group = new ToggleGroup(); 
         patientRadio.setToggleGroup(group);
         doctorRadio.setToggleGroup(group);
         nurseRadio.setToggleGroup(group);
-        HBox radioBox = new HBox(10, patientRadio, doctorRadio, nurseRadio);
-        radioBox.setAlignment(Pos.CENTER);
-        
-        loginButton.setOnAction(e -> authenticateUser(primaryStage));
+        radioBox.getChildren().addAll(patientRadio, doctorRadio, nurseRadio);
 
-        getChildren().addAll(label, login, usernameField, passwordField, radioBox, loginButton, forgotPasswordLink, loginStatus);
+        loginButton = new Button("Login"); 
+        forgotPasswordLink = new Hyperlink("No Account, Click here");
+        Label error = new Label("");
+
+        // Add action to the login button to validate login credentials
+        loginButton.setOnAction(e -> {
+            String username = usernameField.getText();
+            String password = passwordField.getText();
+            if (group.getSelectedToggle() != null) {
+                RadioButton selectedRadio = (RadioButton) group.getSelectedToggle();
+                String role = selectedRadio.getText();
+                if (validateLogin(username, password, role)) {
+                	String[] nameComponents = getFirstLastName(username);
+                	String firstName = null;
+                	String lastName = null;
+                	String email = null;
+                	firstName = nameComponents[0];
+                	lastName = nameComponents[1];
+                	email = nameComponents[2];
+                    switch (role) {
+                        case "patient":
+                            showPatientPage(firstName, lastName, email, username);
+                            break;
+                        case "doctor":
+                            showDoctorPage(firstName, lastName, email, username);
+                            break;
+                        case "nurse":
+                            showNursePage(firstName, lastName, email, username);
+                            break;
+                    }
+                } else {
+                    error.setText("Invalid username, password, or role.");
+                }
+            }
+        });
+
+        // Add action to the "No Account" hyperlink to navigate to the registration page
+        forgotPasswordLink.setOnAction(e -> showRegisterPage());
+
+        getChildren().addAll(label, login, usernameField, passwordField, radioBox, loginButton, forgotPasswordLink, error);
     }
-    
+    private String[] getFirstLastName(String username) {
+        String[] names = new String[3];
+        String userDetailsFilePath = username + "/userDetails.txt";
 
-    private void setupFields() {
-        usernameField.setPrefWidth(200);
-        usernameField.setMaxWidth(200);
-        usernameField.setPromptText("Username");
+        try {
+            File file = new File(userDetailsFilePath);
+            if (file.exists()) {
+                BufferedReader reader = new BufferedReader(new FileReader(file));
+                String username1 = reader.readLine();
+                username1 = (username1.split(":")[1].trim());
+                String password1 = reader.readLine();
+                password1 = (password1.split(":")[1].trim());
+                String role1 = reader.readLine();
+                role1 = (role1.split(":")[1].trim());
+                String first1 = reader.readLine();
+                first1 = (first1.split(":")[1].trim());
+                String last1 = reader.readLine();
+                last1 = (last1.split(":")[1].trim());
+                String email1 = reader.readLine();
+                email1 = (email1.split(":")[1].trim());
+                reader.close();
 
-        passwordField.setPrefWidth(200);
-        passwordField.setMaxWidth(200);
-        passwordField.setPromptText("Password");
-    }
-
-    private void authenticateUser(Stage primaryStage) {
-        String selectedRole = getSelectedRole();
-        String username = usernameField.getText().trim();
-        String password = passwordField.getText().trim();
-
-        if (Authentication.authenticate(selectedRole, username, password)) {
-        	this.authenticatedUsername = username; 
-            loginStatus.setText("Login successful for " + selectedRole);
-            Scene targetScene = null;
-            switch (selectedRole) {
-                case "patient":
-                	targetScene = new Scene(new PatientPage(primaryStage, authenticatedUsername), 1500, 800);
-                    break;
-                case "doctor":
-                    targetScene = new Scene(new DoctorPage(primaryStage, authenticatedUsername), 1500, 800);
-                    break;
-                case "nurse":
-                    targetScene = new Scene(new NursePage(primaryStage, authenticatedUsername), 600, 800);
-                    break;
+                names[0] = first1;
+                names[1] = last1;
+                names[2] = email1;
+            } else {
+                System.out.println("File does not exist");
             }
-            if (targetScene != null) {
-                Stage currentStage = (Stage) this.getScene().getWindow();
-                currentStage.setScene(targetScene);
-            }
-            if (onAuthenticated != null) {
-                onAuthenticated.accept(selectedRole);
-            }
-        } else {
-            loginStatus.setText("Login failed. Incorrect username or password.");
-            usernameField.clear();
-            passwordField.clear();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+
+        return names;
     }
-    
-    public String getUsername()
-    {
-    	return usernameField.getText().trim();
+    private boolean validateLogin(String username, String password, String role) {
+        String userDetailsFilePath = username + "/userDetails.txt";
+        try {
+            File file = new File(userDetailsFilePath);
+            if (file.exists()) {
+                BufferedReader reader = new BufferedReader(new FileReader(file));
+                String username1 = reader.readLine();
+                username1 = (username1.split(":")[1].trim());
+
+                String password1 = reader.readLine();
+                password1 = (password1.split(":")[1].trim());
+
+                String role1 = reader.readLine();
+                role1 = (role1.split(":")[1].trim());
+
+                reader.close();
+
+                // Check if provided credentials match the stored ones
+                if (username1.equals(username) && password1.equals(password) && role1.equals(role)) {
+                    System.out.println("Credentials match");
+                    return true;
+                } else {
+                    System.out.println("Credentials do not match");
+                    return false;
+                }
+            } else {
+                System.out.println("File does not exist");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
-    
-    public String getAuthenticatedUsername() {
-        return authenticatedUsername;
+
+    private void showDoctorPage(String firstName, String lastName, String email, String doctorUsername) {
+        DoctorPage doctorPage = new DoctorPage(primaryStage, firstName, lastName, email, doctorUsername);
+        Scene doctorScene = new Scene(doctorPage, 1600, 1200);
+        primaryStage.setScene(doctorScene);
     }
 
-    public void setOnRegisterRequested(Runnable onRegisterRequested) {
-        this.onRegisterRequested = onRegisterRequested;
+    private void showNursePage(String firstName, String lastName, String email, String doctorUsername) {
+        NursePage nursePage = new NursePage(primaryStage, firstName, lastName, email, doctorUsername);
+        Scene nurseScene = new Scene(nursePage, 1600, 1200);
+        primaryStage.setScene(nurseScene);
     }
 
-    public void setOnAuthenticated(Consumer<String> onAuthenticated) {
-        this.onAuthenticated = onAuthenticated;
+    private void showPatientPage(String firstName, String lastName, String email, String username) {
+        PatientPage patientPage = new PatientPage(primaryStage, firstName, lastName, email, username);
+        Scene patientScene = new Scene(patientPage, 1600, 1200);
+        primaryStage.setScene(patientScene);
     }
 
-    public String getSelectedRole() {
-        RadioButton selectedRadioButton = (RadioButton) group.getSelectedToggle();
-        return selectedRadioButton != null ? selectedRadioButton.getText() : "";
-    }
-
-    public Hyperlink getForgotPasswordLink() {
-        return forgotPasswordLink;
-    }
-
-    public Button getLoginButton() {
-        return loginButton;
+    private void showRegisterPage() {
+        RegisterPage registerPage = new RegisterPage(primaryStage);
+        Scene registerScene = new Scene(registerPage, 600, 800);
+        primaryStage.setScene(registerScene);
     }
 }
