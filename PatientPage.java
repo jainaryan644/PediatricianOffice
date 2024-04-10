@@ -1,6 +1,7 @@
 //package application;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,6 +10,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -33,19 +35,77 @@ import javafx.scene.text.TextFlow;
 import javafx.scene.paint.Color;
 
 public class PatientPage extends BorderPane {
-	private Label patientNameLabel = new Label("Doctor <Unknown>");
-	private Label doctorNameLabel = new Label("<Unknown>");
-	private Label doctorEmailLabel = new Label("<Unknown>");
+	private Label patientNameLabel = new Label("");
+	private Label doctorNameLabel = new Label("");
+	private Label doctorEmailLabel = new Label("");
 	private Button logoutButton;
 	private TextArea chatTextArea;
 	private TextField chatInputField; // TextField for writing new messages
 	private Button sendButton; // Button to send a message
+	
+	private void updateDoctorNameLabel(String doctorName) {
+	    doctorNameLabel.setText("Doctor: " + doctorName);
+	    System.out.print(doctorName);
+	}
+    
+    private void loadDoctorInformation(String patient) {
+        //String username = ""; // Placeholder - dynamically assign as needed
+        Path patientFilePath = Paths.get(patient + "/generalInfo.txt");
 
-	public PatientPage(Stage primaryStage, String firstName, String lastName, String birthday) {
+        if (Files.exists(patientFilePath)) {
+	        try (Stream<String> lines = Files.lines(patientFilePath)) {
+	            lines.forEach(line -> {
+	                String[] parts = line.split(":");
+	                if (parts.length == 2) {
+	                    String label = parts[0].trim();
+	                    String value = parts[1].trim();
+	                    if(label.equals("Doctor"))
+	                    {
+	                    	updateDoctorNameLabel(value);
+	                    }
+	                }
+	            });
+	            
+	            
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	            // Handle exception here, perhaps with an alert to the user
+	        }
+        }
+        
+	           
+        if (Files.exists(patientFilePath)) {
+	        try (Stream<String> lines = Files.lines(patientFilePath)) {
+	            lines.forEach(line -> {
+	                String[] parts = line.split(": ");
+	                if (parts.length == 2) {
+	                    String label = parts[0].trim();
+	                    String value = parts[1].trim();
+	                    if(label.equals("First Name"))
+	                    {
+	                    	patientNameLabel.setText("Hello " + value);
+	                    }
+	                }
+	            });
+	            
+	            
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	            // Handle exception here, perhaps with an alert to the user
+	        }        
+        }
+    
+    }
+
+
+
+
+	public PatientPage(String username) {
 		// Main layout is BorderPane (it has 5 areas: top, right, bottom, left, center)
 		super();
 		logoutButton = new Button("Logout");
-		logoutButton.setOnAction(e -> logout(primaryStage));
+		loadDoctorInformation(username); 
+		//logoutButton.setOnAction(e -> logout());
 
 		patientNameLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: #2e8b57;"); // Optional styling
 		this.setTop(patientNameLabel);
@@ -56,11 +116,9 @@ public class PatientPage extends BorderPane {
 
 		// Text areas for the center
 		TextArea visitSummaryTextArea = new TextArea();
-		visitSummaryTextArea.setEditable(false);
 		visitSummaryTextArea.setPromptText("Visit Summary");
 		visitSummaryTextArea.setPrefHeight(390);
 		TextArea healthConcernsTextArea = new TextArea();
-		healthConcernsTextArea.setEditable(false);
 		healthConcernsTextArea.setPromptText("Health Concerns");
 		healthConcernsTextArea.setPrefHeight(390);
 
@@ -150,9 +208,9 @@ public class PatientPage extends BorderPane {
         grid.add(txtPharmacy, 1, 4);
         grid.add(btnEditPharmacy, 2, 4);
         
-        String username = firstName + lastName + birthday; // This should be dynamically generated based on the patient
-        username.toLowerCase();
+        //String username = "aryanjain20031002"; // This should be dynamically generated based on the patient
 	    Path patientFilePath = Paths.get(username + "/generalInfo.txt");
+	    
 	    
         loadPatientInformation(patientFilePath, txtPhoneNumber, txtEmail, txtInsurance, txtAddress, txtPharmacy);
         
@@ -184,6 +242,7 @@ public class PatientPage extends BorderPane {
 		this.setRight(rightPanel);
 	}
 
+	
 	private VBox setupLeftPanel() {
 		// Existing setup for tabs and search, etc.
 		VBox leftPanel = new VBox();
@@ -315,7 +374,7 @@ public class PatientPage extends BorderPane {
 
 
 	
-	private void loadChatHistory(String username) {
+	public void loadChatHistory(String username) {
     	chatTextArea.clear(); // Clear previous messages
         Path chatFilePath = Paths.get(username + "/Chat.txt");
         if (Files.exists(chatFilePath)) {
@@ -329,9 +388,9 @@ public class PatientPage extends BorderPane {
         }
     }
     
-    private void appendMessageToFile(String username, String sender, String message) {
-    	String chatFilePath = username + "/Chat.txt";
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(chatFilePath, true))) {
+    public void appendMessageToFile(String username, String sender, String message) {
+        String filename = username + "/Chat.txt";
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename, true))) {
             String timestamp = DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(LocalDateTime.now());
             writer.write(timestamp + "\n" + sender + ":\n" + message + "\n\n");
             writer.newLine();
@@ -340,15 +399,15 @@ public class PatientPage extends BorderPane {
         }
     }
     
-    private void sendMessage(String username, String sender, String message) {
+    public void sendMessage(String patientID, String sender, String message) {
         if (message == null || message.trim().isEmpty()) {
             // Handle empty message case (e.g., show an alert or error)
             return;
         }
         // Assuming 'Doctor' is the sender. Replace with actual doctor's identification.
-        appendMessageToFile(username, sender, message);
+        appendMessageToFile(patientID, sender, message);
         // Reload chat history to display the new message
-        loadChatHistory(username);
+        loadChatHistory(patientID);
         // Clear the input field after sending the message
         chatInputField.clear();
     }
@@ -363,7 +422,7 @@ public class PatientPage extends BorderPane {
 	}
 
 	private void logout(Stage primaryStage) {
-		LoginPage loginPage = new LoginPage(primaryStage);
+		LoginPage loginPage = new LoginPage();
 		Scene loginScene = new Scene(loginPage, 600, 800);
 		primaryStage.setScene(loginScene);
 	}
