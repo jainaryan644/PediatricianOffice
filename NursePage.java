@@ -1,5 +1,5 @@
 package application;
-
+//Nurse imports
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -13,7 +13,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import javafx.scene.Scene;
+import javafx.scene.Scene; 
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
