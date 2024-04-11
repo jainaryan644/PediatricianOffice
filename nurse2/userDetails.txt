@@ -1,0 +1,7 @@
+Username: nurse2
+Password: 123
+Role: nurse
+First Name: Diego
+Last Name: Watts
+Email: diego@nurse.com
+Birthday: 2001

@@ -1,0 +1,7 @@
+Username: doctor2
+Password: 123
+Role: doctor
+First Name: Talia
+Last Name: Clarke
+Email: talia@doctor.com
+Birthday: 2002
