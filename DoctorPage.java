@@ -8,15 +8,27 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.HashMap;
+import java.util.Map;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Scanner;
+import java.io.FileWriter;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+
+
+import java.time.format.DateTimeFormatter;
+
+import java.util.stream.Stream;
+
+import java.io.BufferedWriter;
 
 public class DoctorPage extends BorderPane {
 
@@ -28,6 +40,7 @@ public class DoctorPage extends BorderPane {
     private TextArea healthConcernsTextArea = new TextArea();
     private TextArea prescriptionTextArea = new TextArea();
     private TextArea vaccinationsTextArea = new TextArea();
+    
     private Button logoutButton = new Button("Logout");
     private VBox leftPanel;
     private VBox visitsPanel; // Panel for displaying visit dates
@@ -35,11 +48,67 @@ public class DoctorPage extends BorderPane {
     private Button saveVisitButton = new Button("Save Visit");
     private Button seeVisitsButton = new Button("See Visits");
     private String filePath;
+    private TextField searchField;
+    private PatientPage pp;
+    private String username;
+    private String pname;
+    static String doctorName;
 
-    public DoctorPage() {
+    private TextArea chatTextArea;
+
+   	private TextField chatInputField; // TextField for writing new messages
+
+   	private Button sendButton; // Button to send a message
+   	
+    public DoctorPage(Stage primaryStage, String username) { // Modify the constructor to accept username
         super();
+        this.username = username; // Set the username
+        
+        
+        logoutButton.setOnAction(e -> {
+            primaryStage.setScene(new Scene(new LoginPage(primaryStage), 300, 275));
+            primaryStage.show();
+        });
         initializeUIComponents();
+        updateDoctorProfile(); // Call this method after initializing components
     }
+    
+    public static Map<String, String> getDoctorInfoByUsername(String username) {
+        File file = new File("doctors.txt");
+        Map<String, String> doctorInfo = new HashMap<>();
+        try (Scanner scanner = new Scanner(file)) {
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                if (line.startsWith(username)) {
+                    // Username found, now extract Name and Email in the next lines
+                    while (scanner.hasNextLine()) {
+                        line = scanner.nextLine();
+                        if (line.startsWith("Name: ")) {
+                        	doctorName = line.substring(6).trim();
+                            doctorInfo.put("name", doctorName);
+                        } else if (line.startsWith("Email: ")) {
+                            doctorInfo.put("email", line.substring(7).trim());
+                            break; // Assuming email is the last info per doctor
+                        }
+                    }
+                    break;
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        return doctorInfo;
+    }
+ 
+    
+    private void updateDoctorProfile() {
+        Map<String, String> doctorInfo = getDoctorInfoByUsername(this.username);
+        pname = doctorInfo.getOrDefault("name", "<Unknown>");
+        String email = doctorInfo.getOrDefault("email", "<Unknown>");
+        doctorNameLabel.setText(pname);
+        doctorEmailLabel.setText(email);
+    }
+
 
     private void initializeUIComponents() {
         // Combining left panel and visits scroll pane into an HBox
@@ -138,7 +207,6 @@ public class DoctorPage extends BorderPane {
                     } else if (line.startsWith("Vaccinations: ")) {
                         vaccinationsTextArea.setText(line.substring("Vaccinations: ".length()));
                     } else if (line.trim().isEmpty() || line.startsWith("Date: ")) {
-                        // Stop if we reach an empty line or the next visit section starts
                         break;
                     }
                 }
@@ -184,11 +252,13 @@ public class DoctorPage extends BorderPane {
         leftPanel.setPrefWidth(350);
 
         // Patient search field and button
-        TextField searchField = new TextField();
+        searchField = new TextField();
         searchField.setPromptText("Search Patient by Username");
         Button searchButton = new Button("Search");
-        searchButton.setOnAction(e -> searchPatient(searchField.getText().trim()));
-
+        searchButton.setOnAction(e ->{
+        	searchPatient(searchField.getText().trim());     	
+        });
+        
         HBox searchBox = new HBox(5, searchField, searchButton);
         leftPanel.getChildren().add(searchBox);
 
@@ -206,6 +276,98 @@ public class DoctorPage extends BorderPane {
         return leftPanel;
     }
 
+    private void loadChatHistory(String username) {
+
+    	//chatTextArea.clear(); // Clear previous messages
+
+        Path chatFilePath = Paths.get(username + "/Chat.txt");
+
+        
+
+        if (Files.exists(chatFilePath)) {
+
+            try {
+
+                // Read all lines from the chat file and append to the chat display area
+
+                Files.lines(chatFilePath).forEach(line -> chatTextArea.appendText(line + "\n"));
+
+            } catch (IOException e) {
+
+                e.printStackTrace(); // Handle exceptions here
+
+                // Maybe show an alert to the user or log the error
+
+            }
+
+        }
+
+        sendButton.setOnAction(e -> {
+
+            String message = chatInputField.getText();
+
+            if (!message.isEmpty()) {
+
+                sendMessage(username, "Doctor " + doctorName, message); // Replace "Doctor" with the actual doctor's name
+
+                chatInputField.clear(); // Clear the text field after sending the message
+
+                loadChatHistory(username); // Load the chat history again to display the new message
+
+            }
+
+        });
+
+    }
+
+    
+
+    private void appendMessageToFile(String username, String sender, String message) {
+
+        String filename = username + "/Chat.txt";
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename, true))) {
+
+            String timestamp = DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(LocalDateTime.now());
+
+            writer.write(timestamp + "\n" + sender + ":\n" + message + "\n\n");
+
+            writer.newLine();
+
+        } catch (IOException e) {
+
+            e.printStackTrace(); // Handle exceptions here
+
+        }
+
+    }
+
+    
+
+    private void sendMessage(String patientID, String sender, String message) {
+
+        if (message == null || message.trim().isEmpty()) {
+
+            // Handle empty message case (e.g., show an alert or error)
+
+            return;
+
+        }
+
+        // Assuming 'Doctor' is the sender. Replace with actual doctor's identification.
+
+        appendMessageToFile(patientID, sender, message);
+
+        // Reload chat history to display the new message
+
+        loadChatHistory(patientID);
+
+        // Clear the input field after sending the message
+
+        chatInputField.clear();
+
+    }
+
     private Node setupCenterPanel() {
         VBox centerPanel = new VBox();
         centerPanel.setPrefWidth(350);
@@ -219,8 +381,12 @@ public class DoctorPage extends BorderPane {
 
     private Node setupRightPanel() {
         VBox rightPanel = new VBox();
+        
+        
         rightPanel.setSpacing(10);
         rightPanel.setPrefWidth(300);
+        
+        
 
         // Edit Prescription box
         VBox editPrescriptionBox = setupEditPrescriptionBox();
@@ -229,7 +395,43 @@ public class DoctorPage extends BorderPane {
         VBox vaccinationsBox = setupVaccinationsBox();
 
         // Chat box
-        VBox chatBox = setupChatBox();
+        VBox chatBox = new VBox(new Label("Chat"));
+
+        chatTextArea = new TextArea();
+
+        chatTextArea.setEditable(false);
+
+        chatInputField = new TextField();
+
+        sendButton = new Button("Send");
+
+        HBox chatInputBox = new HBox(chatInputField, sendButton);
+
+        //loadChatHistory("12345");
+
+        chatBox.getChildren().addAll(chatTextArea, chatInputBox);
+
+        loadChatHistory(searchField.getText().trim());
+
+        sendButton.setOnAction(e -> {
+
+            String message = chatInputField.getText();
+
+            if (!message.isEmpty()) {
+
+                sendMessage(searchField.getText().trim(), "Patient", message); // Replace "Doctor" with the actual doctor's name
+
+                chatInputField.clear(); // Clear the text field after sending the message
+
+                loadChatHistory(searchField.getText().trim()); // Load the chat history again to display the new message
+
+            }
+
+        });
+
+
+
+
 
         // Adding components to the right panel
         rightPanel.getChildren().addAll(editPrescriptionBox, vaccinationsBox, chatBox);
@@ -240,30 +442,45 @@ public class DoctorPage extends BorderPane {
     private VBox setupEditPrescriptionBox() {
         VBox box = new VBox(5);
         Label label = new Label("Edit Prescription");
-        TextArea textArea = new TextArea();
-        textArea.setPrefHeight(200);
+        prescriptionTextArea = new TextArea();
+       
+       
+        prescriptionTextArea.setPrefHeight(200);
 
-        box.getChildren().addAll(label, textArea);
+        box.getChildren().addAll(label,  prescriptionTextArea);
         return box;
     }
 
     private VBox setupVaccinationsBox() {
         VBox box = new VBox(5);
         Label label = new Label("Edit Vaccinations");
-        TextArea textArea = new TextArea();
-        box.getChildren().addAll(label, textArea);
+        vaccinationsTextArea = new TextArea();
+        
+        
+        box.getChildren().addAll(label, vaccinationsTextArea);
         return box;
     }
 
     private VBox setupChatBox() {
+
         VBox box = new VBox(5);
+
         Label label = new Label("Chat");
-        ListView<String> listView = new ListView<>();
-        TextField inputField = new TextField();
+
+        TextArea chatTextArea = new TextArea();
+
+        TextField chatInputField = new TextField();
+
         Button sendButton = new Button("Send");
-        HBox inputBox = new HBox(inputField, sendButton);
-        box.getChildren().addAll(label, listView, inputBox);
+
+        
+
+        HBox inputBox = new HBox(chatInputField, sendButton);
+
+        box.getChildren().addAll(label, chatTextArea, inputBox);
+
         return box;
+
     }
 
     private Tab createTab(String title, String promptText) {
@@ -289,6 +506,12 @@ public class DoctorPage extends BorderPane {
         if (!generalInfoFile.exists()) {
             return; // Optionally, show an alert here
         }
+        
+      //loadChatHistory(searchField.getText().trim());
+
+        //pp= new PatientPage(username);
+
+        loadChatHistory(searchField.getText().trim());
 
         filePath = new File(patientDir, username + "_visits.txt").getAbsolutePath();
 
@@ -317,4 +540,3 @@ public class DoctorPage extends BorderPane {
         }
     }
 }
-
