@@ -1,5 +1,5 @@
 package application;
-
+  //doctor imports
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -26,7 +26,7 @@ public class DoctorPage extends BorderPane {
     private Label doctorEmailLabel = new Label("");
     private Button logoutButton;
     private String[][] allData;
-  
+
 
     public DoctorPage(Stage primaryStage, String firstName, String lastName, String email, String doctorUsername) {
         // Main layout is BorderPane (it has 5 areas: top, right, bottom, left, center)
@@ -225,7 +225,7 @@ public class DoctorPage extends BorderPane {
             }
 
             
-            
+    //===========================        
             
 
             // Create directory path for the new visit
